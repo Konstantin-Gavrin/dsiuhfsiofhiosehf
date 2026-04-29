@@ -9,13 +9,12 @@ services:
     volumes:
       - ./loki-config.yml:/etc/loki/local-config.yaml:ro
       - loki-storage:/loki
-    networks:
-      - power-bot-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 volumes:
   loki-storage:
-
-networks:
-  power-bot-network:
-    external: true
