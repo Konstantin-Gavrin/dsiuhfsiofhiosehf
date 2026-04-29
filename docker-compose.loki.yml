@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-storage:/loki
+    networks:
+      - power-bot-network
+    restart: unless-stopped
+
+volumes:
+  loki-storage:
+
+networks:
+  power-bot-network:
+    external: true
