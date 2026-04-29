@@ -19,7 +19,7 @@ const formatLog = (level, fields) => {
   const timestamp = getTimestamp();
   const baseFields = {
     ts: timestamp,
-    service: 'power-bot',
+    service: 'dsiuhfsiofhiosehf',
     level: level,
   };
 
