@@ -15,6 +15,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
@@ -36,7 +39,7 @@ EXPOSE 3000
 # Queries the /health endpoint every 30 seconds
 # Allows 3 consecutive failures before marking as unhealthy
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+  CMD curl -f http://127.0.0.1:3000/health || exit 1
 
 # Start application
 CMD ["node", "src/server.js"]
