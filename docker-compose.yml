@@ -14,6 +14,7 @@ networks:
   power-bot-network:
     driver: bridge
     name: power-bot-network
+    external: true
 
 volumes:
   loki-storage:
