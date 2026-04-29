@@ -46,7 +46,7 @@
       },
       "targets": [
         {
-          "expr": "{service=\"power-bot\"}",
+          "expr": "{service=\"dsiuhfsiofhiosehf\"}",
           "refId": "A"
         }
       ],
@@ -128,7 +128,7 @@
       },
       "targets": [
         {
-          "expr": "{service=\"power-bot\"} |= \"level=INFO\" | regexp `price_eur=(?P<price>[0-9.]+)` | unwrap price | __error__=\"\"",
+          "expr": "{service=\"dsiuhfsiofhiosehf\"} |= \"level=INFO\" | regexp `price_eur=(?P<price>[0-9.]+)` | unwrap price | __error__=\"\"",
           "legendFormat": "Price EUR/kWh",
           "refId": "A"
         }
@@ -188,7 +188,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "expr": "count_over_time({service=\"power-bot\"} |= \"event=api_failure\" [5m])",
+          "expr": "count_over_time({service=\"dsiuhfsiofhiosehf\"} |= \"event=api_failure\" [5m])",
           "legendFormat": "API Errors",
           "refId": "A"
         }
