@@ -31,6 +31,22 @@ services:
       - power-bot-network
     restart: unless-stopped
 
+  # Grafana - Visualization and dashboards
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    depends_on:
+      - loki
+    networks:
+      - power-bot-network
+    restart: unless-stopped
+
 networks:
   power-bot-network:
     driver: bridge
@@ -38,4 +54,6 @@ networks:
 
 volumes:
   loki-storage:
+    driver: local
+  grafana-storage:
     driver: local
