@@ -5,9 +5,7 @@ services:
   loki:
     image: grafana/loki:latest
     volumes:
-      - ./loki-config.yaml:/etc/loki/local-config.yaml
       - loki-storage:/loki
-    command: -config.file=/etc/loki/local-config.yaml
     networks:
       - power-bot-network
     restart: unless-stopped
