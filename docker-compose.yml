@@ -29,6 +29,18 @@ services:
       - power-bot-network
     restart: unless-stopped
 
+  # Promtail - scrape container logs and push to Loki
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/log:/var/log:ro
+      - ./grafana-provisioning/promtail:/etc/promtail
+    command: -config.file=/etc/promtail/promtail-config.yml
+    networks:
+      - power-bot-network
+    restart: unless-stopped
+
 networks:
   power-bot-network:
     driver: bridge
