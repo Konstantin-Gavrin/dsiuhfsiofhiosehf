@@ -57,17 +57,27 @@ const fetchCurrentPrice = async () => {
       timeout: 10000,
     });
 
-    if (!response.data || response.data.length === 0) {
+    // Check if response is successful
+    if (!response.data || !response.data.success) {
       logger.error({
-        event: 'api_empty_response',
-        message: 'Elering API returned empty data',
+        event: 'api_error_response',
+        message: 'Elering API returned error or no success flag',
       });
       return null;
     }
 
-    // Get the current hour price
-    // API returns array of hourly prices, we need the latest one
-    const currentPrice = response.data[response.data.length - 1];
+    // Get price data for Estonia (ee field)
+    const priceDataEe = response.data.data?.ee;
+    if (!priceDataEe || priceDataEe.length === 0) {
+      logger.error({
+        event: 'api_empty_response',
+        message: 'Elering API returned empty data for Estonia',
+      });
+      return null;
+    }
+
+    // Get the current hour price (latest entry)
+    const currentPrice = priceDataEe[priceDataEe.length - 1];
 
     if (!currentPrice || !currentPrice.price) {
       logger.error({
