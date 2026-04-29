@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  grafana:
+    image: grafana/grafana-oss:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${SERVICE_PASSWORD_GRAFANA}
+      - GF_SERVER_ROOT_URL=${SERVICE_URL_GRAFANA}
+      - GF_SERVER_DOMAIN=${SERVICE_FQDN_GRAFANA}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - loki
+    networks:
+      - power-bot-network
+    healthcheck:
+      test: ["CMD","curl","-f","http://127.0.0.1:3000/api/health"]
+      interval: 5s
+      timeout: 20s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  grafana-data:
+
+networks:
+  power-bot-network:
+    external: true

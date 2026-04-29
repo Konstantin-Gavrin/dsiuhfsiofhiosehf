@@ -1,0 +1,6 @@
+version: "3.8"
+
+services: {}
+
+# Use this Compose file as an empty starting point in Coolify.
+# Add services under `services:` when ready, then deploy the stack in Coolify.
