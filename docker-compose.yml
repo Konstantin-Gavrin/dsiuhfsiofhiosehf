@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Loki - Log aggregation system
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - power-bot-network
+
+  # Grafana - Visualization and dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    depends_on:
+      - loki
+    networks:
+      - power-bot-network
+
+  # Power Bot - Main application
+  power-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: power-bot
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - THRESHOLD_EUR=0.10
+      - CHECK_INTERVAL_MS=300000
+      - ELERING_API_URL=https://dashboard.elering.ee/api/nps/price
+    logging:
+      driver: "loki"
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+    depends_on:
+      - loki
+    networks:
+      - power-bot-network
+    restart: unless-stopped
+
+networks:
+  power-bot-network:
+    driver: bridge
+
+volumes:
+  grafana-storage:
+    driver: local
