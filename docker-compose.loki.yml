@@ -4,7 +4,7 @@ services:
   loki:
     image: grafana/loki:latest
     ports:
-      - "3100:3100"
+      - "3101:3100"
     volumes:
       - loki-storage:/loki
     healthcheck:
