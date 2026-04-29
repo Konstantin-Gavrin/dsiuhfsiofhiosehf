@@ -31,8 +31,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/log:/var/log:ro
-      - ./grafana-provisioning/promtail:/etc/promtail:ro
-    command: -config.file=/etc/promtail/promtail-config.yml -config.expand-env=true
+      - ./grafana-provisioning/promtail:/opt/promtail-config:ro
+    command: -config.file=/opt/promtail-config/promtail-config.yml -config.expand-env=true
     networks:
       - power-bot-network
     restart: unless-stopped
