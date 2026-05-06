@@ -12,6 +12,9 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { register, login } = require('./auth');
 const { authRequired, requireRole } = require('./middleware/auth');
+
+const app = express();
+
 app.use(express.json());
 /**
  * User registration
@@ -83,8 +86,6 @@ app.delete('/api/devices/:id', authRequired, async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
-
-const app = express();
 
 /**
  * Middleware: structured request/response logging
