@@ -149,6 +149,32 @@ app.get('/api/boiler/status', (req, res) => {
 });
 
 /**
+ * Convenience alias for boiler status
+ */
+app.get('/api/boiler', (req, res) => {
+  try {
+    const state = priceService.getState();
+
+    res.status(200).json({
+      status: state.status,
+      current_price_eur: state.current_price_eur,
+      threshold: state.threshold,
+    });
+  } catch (error) {
+    logger.error({
+      event: 'endpoint_error',
+      path: '/api/boiler',
+      message: error.message,
+    });
+
+    res.status(500).json({
+      error: 'Internal server error',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+/**
  * Optional: Status endpoint for debugging
  */
 app.get('/api/status', (req, res) => {
