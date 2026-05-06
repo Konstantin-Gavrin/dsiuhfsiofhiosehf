@@ -8,6 +8,81 @@ const express = require('express');
 const config = require('./config');
 const priceService = require('./priceService');
 const logger = require('./logger');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+const { register, login } = require('./auth');
+const { authRequired, requireRole } = require('./middleware/auth');
+app.use(express.json());
+/**
+ * User registration
+ * POST /api/register { email, password }
+ */
+app.post('/api/register', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await register({ email, password });
+    res.status(201).json({ id: user.id, email: user.email, role: user.role });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * User login
+ * POST /api/login { email, password }
+ */
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const { token, user } = await login({ email, password });
+    res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
+  } catch (e) {
+    res.status(401).json({ error: e.message });
+  }
+});
+
+/**
+ * CRUD for devices (auth required)
+ */
+app.get('/api/devices', authRequired, async (req, res) => {
+  const devices = await prisma.device.findMany({ where: { userId: req.user.userId } });
+  res.json(devices);
+});
+
+app.post('/api/devices', authRequired, async (req, res) => {
+  try {
+    const { name, description, address, threshold, isCritical } = req.body;
+    const device = await prisma.device.create({
+      data: { name, description, address, threshold, isCritical, userId: req.user.userId },
+    });
+    res.status(201).json(device);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.put('/api/devices/:id', authRequired, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const device = await prisma.device.update({
+      where: { id, userId: req.user.userId },
+      data: req.body,
+    });
+    res.json(device);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.delete('/api/devices/:id', authRequired, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    await prisma.device.delete({ where: { id, userId: req.user.userId } });
+    res.status(204).end();
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
 const app = express();
 
