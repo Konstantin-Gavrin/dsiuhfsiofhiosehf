@@ -8,10 +8,10 @@ WORKDIR /build
 COPY package*.json ./
 COPY prisma/ ./prisma/
 
-# Install production dependencies
-RUN npm ci --omit=dev
+# Install production dependencies (skip postinstall scripts to avoid premature generation)
+RUN npm ci --omit=dev --ignore-scripts
 
-# Generate Prisma client with correct binaryTargets
+# Generate Prisma client with correct binaryTargets after schema is ready
 RUN npx prisma generate
 
 # Stage 2: Runtime - Final image
