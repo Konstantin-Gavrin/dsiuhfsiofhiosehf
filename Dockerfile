@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for Node.js power-bot application
 # Stage 1: Builder - Install dependencies
-FROM node:18-alpine AS builder
+FROM node:18-slim AS builder
 
 WORKDIR /build
 
@@ -12,16 +12,16 @@ COPY prisma/ ./prisma/
 RUN npm ci --omit=dev
 
 # Stage 2: Runtime - Final image
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
 # Install curl for healthcheck
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN groupadd -g 1001 nodejs && \
+    useradd -u 1001 -g nodejs -s /bin/bash nodejs
 
 # Copy installed node_modules from builder
 COPY --from=builder --chown=nodejs:nodejs /build/node_modules ./node_modules
