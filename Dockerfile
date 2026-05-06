@@ -11,6 +11,9 @@ COPY prisma/ ./prisma/
 # Install production dependencies
 RUN npm ci --omit=dev
 
+# Generate Prisma client with correct binaryTargets
+RUN npx prisma generate
+
 # Stage 2: Runtime - Final image
 FROM node:18-slim
 
@@ -25,6 +28,9 @@ RUN groupadd -g 1001 nodejs && \
 
 # Copy installed node_modules from builder
 COPY --from=builder --chown=nodejs:nodejs /build/node_modules ./node_modules
+
+# Copy .prisma/client from builder (contains generated Prisma engines)
+COPY --from=builder --chown=nodejs:nodejs /build/.prisma ./.prisma
 
 # Copy Prisma schema (needed for migrations and client)
 COPY --chown=nodejs:nodejs prisma/ ./prisma/
