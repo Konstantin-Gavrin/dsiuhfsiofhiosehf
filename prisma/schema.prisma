@@ -1,0 +1,51 @@
+// Prisma schema for Nutika Elektrivõrgu Juhtimiskeskus
+// DB: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  role      String   // 'master' | 'user'
+  createdAt DateTime @default(now())
+  devices   Device[]
+  savedReports SavedReport[]
+}
+
+model Device {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  address     String   // IP, API endpoint, or MQTT topic
+  threshold   Float
+  isCritical  Boolean  @default(false)
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  commands    CommandLog[]
+}
+
+model CommandLog {
+  id         Int      @id @default(autoincrement())
+  device     Device   @relation(fields: [deviceId], references: [id])
+  deviceId   Int
+  command    String
+  status     String
+  createdAt  DateTime @default(now())
+}
+
+model SavedReport {
+  id         Int      @id @default(autoincrement())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  type       String   // 'säästuaruanne', 'prognoos'
+  data       Json
+  createdAt  DateTime @default(now())
+}
