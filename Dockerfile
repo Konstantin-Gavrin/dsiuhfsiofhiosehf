@@ -11,9 +11,6 @@ COPY prisma/ ./prisma/
 # Install production dependencies
 RUN npm ci --omit=dev
 
-# Generate Prisma client
-RUN npx prisma generate
-
 # Stage 2: Runtime - Final image
 FROM node:18-alpine
 
