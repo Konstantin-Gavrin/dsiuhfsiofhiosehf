@@ -29,6 +29,9 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy installed node_modules from builder
 COPY --from=builder --chown=nodejs:nodejs /build/node_modules ./node_modules
 
+# Copy Prisma schema (needed for migrations and client)
+COPY --chown=nodejs:nodejs prisma/ ./prisma/
+
 # Copy application source code
 COPY --chown=nodejs:nodejs src/ ./src/
 COPY --chown=nodejs:nodejs package*.json ./
