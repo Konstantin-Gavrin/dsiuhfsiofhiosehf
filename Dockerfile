@@ -6,9 +6,13 @@ WORKDIR /build
 
 # Copy package files (do this before source code for Docker layer caching)
 COPY package*.json ./
+COPY prisma/ ./prisma/
 
 # Install production dependencies
 RUN npm ci --omit=dev
+
+# Generate Prisma client
+RUN npx prisma generate
 
 # Stage 2: Runtime - Final image
 FROM node:18-alpine
