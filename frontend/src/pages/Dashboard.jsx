@@ -9,6 +9,7 @@ import {
   getSavings,
   overrideDevice,
 } from '../api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import LogoutButton from '../components/LogoutButton';
 
 export default function Dashboard() {
@@ -21,6 +22,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [vacationMode, setVacationMode] = useState(false);
   const [fixedPrice, setFixedPrice] = useState('0.15');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [chartData, setChartData] = useState([]);
   const [newDeviceForm, setNewDeviceForm] = useState({
     name: '',
     description: '',
@@ -45,6 +48,26 @@ export default function Dashboard() {
     }, 30000);
     return () => clearInterval(interval);
   }, [token]);
+
+  // Update chart data when forecast or date changes
+  useEffect(() => {
+    if (forecast.length > 0 && selectedDate) {
+      const filtered = forecast
+        .filter(hour => {
+          const hourDate = new Date(hour.timestamp).toISOString().split('T')[0];
+          return hourDate === selectedDate;
+        })
+        .map(hour => ({
+          timestamp: hour.timestamp,
+          hour: new Date(hour.timestamp).getHours(),
+          price: parseFloat(hour.price_eur),
+          status: hour.status,
+          threshold: fixedPrice,
+          isPeak: parseFloat(hour.price_eur) > parseFloat(fixedPrice),
+        }));
+      setChartData(filtered);
+    }
+  }, [forecast, selectedDate, fixedPrice]);
 
   const loadData = async () => {
     setLoading(true);
@@ -403,34 +426,139 @@ export default function Dashboard() {
 
         {/* Forecast Tab */}
         {activeTab === 'forecast' && (
-          <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-md border border-slate-600/30 rounded-2xl p-8 text-white">
-            <h2 className="text-3xl font-bold mb-6">24-Hour Price Forecast</h2>
+          <div className="space-y-6">
+            {/* Date Navigation */}
+            <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-md border border-slate-600/30 rounded-2xl p-6 text-white">
+              <div className="flex items-center justify-between gap-4">
+                <button
+                  onClick={() => {
+                    const prev = new Date(selectedDate);
+                    prev.setDate(prev.getDate() - 1);
+                    setSelectedDate(prev.toISOString().split('T')[0]);
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
+                >
+                  ← Previous Day
+                </button>
+                
+                <div className="flex-1 text-center">
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full max-w-xs mx-auto bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white text-center focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
+                  />
+                </div>
+
+                <button
+                  onClick={() => {
+                    const next = new Date(selectedDate);
+                    next.setDate(next.getDate() + 1);
+                    setSelectedDate(next.toISOString().split('T')[0]);
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
+                >
+                  Next Day →
+                </button>
+              </div>
+            </div>
+
+            {/* Price Chart */}
             {forecast.length === 0 ? (
-              <p className="text-slate-400 text-center py-8">Loading forecast...</p>
+              <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-md border border-slate-600/30 rounded-2xl p-8 text-center text-white">
+                <p className="text-slate-400">Loading forecast...</p>
+              </div>
             ) : (
-              <div className="overflow-x-auto">
-                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2">
-                  {forecast.slice(0, 24).map((hour, i) => {
-                    const isPeak = hour.price_eur > (fixedPrice || 0.15);
-                    return (
-                      <div
-                        key={i}
-                        className={`p-4 rounded-xl text-center transition-all duration-300 transform hover:scale-110 cursor-pointer ${
-                          isPeak
-                            ? 'bg-gradient-to-b from-red-500/30 to-red-600/20 border border-red-400/50 hover:shadow-lg hover:shadow-red-500/50'
-                            : 'bg-gradient-to-b from-green-500/30 to-green-600/20 border border-green-400/50 hover:shadow-lg hover:shadow-green-500/50'
-                        }`}
-                      >
-                        <p className="text-xs text-slate-300 uppercase tracking-wide">{new Date(hour.timestamp).getHours()}:00</p>
-                        <p className="text-xl font-bold mt-2">€{hour.price_eur?.toFixed(3)}</p>
-                        <div className={`mt-2 px-2 py-1 rounded text-xs font-semibold inline-block ${
-                          isPeak ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-                        }`}>
-                          {hour.status}
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-md border border-slate-600/30 rounded-2xl p-8 text-white">
+                <h3 className="text-2xl font-bold mb-6">Price Forecast - {selectedDate}</h3>
+                <ResponsiveContainer width="100%" height={400}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
+                    <XAxis 
+                      dataKey="hour" 
+                      stroke="rgba(203, 213, 225, 0.5)"
+                      tickFormatter={(hour) => `${hour}:00`}
+                    />
+                    <YAxis 
+                      stroke="rgba(203, 213, 225, 0.5)"
+                      tickFormatter={(value) => `€${value.toFixed(3)}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        border: '1px solid rgba(59, 130, 246, 0.5)',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value, name) => {
+                        if (name === 'price') return [`€${value.toFixed(4)}/kWh`, 'Price'];
+                        if (name === 'threshold') return [`€${value.toFixed(4)}/kWh`, 'Threshold'];
+                        return value;
+                      }}
+                      labelFormatter={(label) => `${label}:00`}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="price" 
+                      stroke="#3b82f6" 
+                      fill="url(#colorPrice)"
+                      strokeWidth={3}
+                      name="Price"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="threshold" 
+                      stroke="#ef4444" 
+                      strokeDasharray="5 5"
+                      strokeWidth={2}
+                      name="Your Threshold"
+                      dot={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Hourly Details Table */}
+            {chartData.length > 0 && (
+              <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-md border border-slate-600/30 rounded-2xl p-8 text-white">
+                <h3 className="text-2xl font-bold mb-6">Hourly Details</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-white/20">
+                      <tr>
+                        <th className="px-4 py-3 text-left">Hour</th>
+                        <th className="px-4 py-3 text-left">Price (€/kWh)</th>
+                        <th className="px-4 py-3 text-left">vs Threshold</th>
+                        <th className="px-4 py-3 text-left">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chartData.map((hour, i) => (
+                        <tr key={i} className="border-b border-white/10 hover:bg-white/5 transition-colors">
+                          <td className="px-4 py-3 font-semibold">{hour.hour}:00</td>
+                          <td className="px-4 py-3 font-bold text-blue-300">€{hour.price.toFixed(4)}</td>
+                          <td className={`px-4 py-3 font-semibold ${hour.isPeak ? 'text-red-400' : 'text-green-400'}`}>
+                            {hour.isPeak ? '↑ Above' : '↓ Below'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              hour.status === 'ON'
+                                ? 'bg-green-500/30 text-green-300 border border-green-500/50'
+                                : 'bg-red-500/30 text-red-300 border border-red-500/50'
+                            }`}>
+                              {hour.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
