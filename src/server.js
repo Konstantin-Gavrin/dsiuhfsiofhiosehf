@@ -229,9 +229,9 @@ app.get('/api/price/current', (req, res) => {
  * GET /api/forecast
  * Returns 24-hour price forecast from Elering API
  */
-app.get('/api/forecast', (req, res) => {
+app.get('/api/forecast', async (req, res) => {
   try {
-    const forecast = priceService.getForecast();
+    const forecast = await priceService.getForecast();
     res.json({ hours: forecast || [] });
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch forecast' });

@@ -79,9 +79,12 @@ export default function Dashboard() {
   const loadForecast = async () => {
     try {
       const data = await getForecast();
-      setForecast(data.hours || []);
+      // Ensure we have an array
+      const forecastArray = Array.isArray(data) ? data : (data?.hours || []);
+      setForecast(forecastArray);
     } catch (e) {
       console.error('Failed to load forecast:', e);
+      setForecast([]);
     }
   };
 
