@@ -24,6 +24,12 @@ export default function Dashboard() {
   const [fixedPrice, setFixedPrice] = useState('0.15');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [chartData, setChartData] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState({
+    price: null,
+    devices: null,
+    forecast: null,
+    savings: null,
+  });
   const [newDeviceForm, setNewDeviceForm] = useState({
     name: '',
     description: '',
@@ -42,11 +48,36 @@ export default function Dashboard() {
     loadData();
   }, [token]);
 
+  // Refresh price every 30 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
+    const priceInterval = setInterval(() => {
       if (token) loadCurrentPrice();
     }, 30000);
-    return () => clearInterval(interval);
+    return () => clearInterval(priceInterval);
+  }, [token]);
+
+  // Refresh devices every 60 seconds
+  useEffect(() => {
+    const devicesInterval = setInterval(() => {
+      if (token) loadDevices();
+    }, 60000);
+    return () => clearInterval(devicesInterval);
+  }, [token]);
+
+  // Refresh forecast every 5 minutes
+  useEffect(() => {
+    const forecastInterval = setInterval(() => {
+      if (token) loadForecast();
+    }, 300000);
+    return () => clearInterval(forecastInterval);
+  }, [token]);
+
+  // Refresh savings every 3 minutes
+  useEffect(() => {
+    const savingsInterval = setInterval(() => {
+      if (token) loadSavings();
+    }, 180000);
+    return () => clearInterval(savingsInterval);
   }, [token]);
 
   // Update chart data when forecast or date changes
@@ -62,12 +93,30 @@ export default function Dashboard() {
           hour: new Date(hour.timestamp).getHours(),
           price: parseFloat(hour.price_eur),
           status: hour.status,
-          threshold: fixedPrice,
+          threshold: parseFloat(fixedPrice),
           isPeak: parseFloat(hour.price_eur) > parseFloat(fixedPrice),
         }));
+      console.log('Chart data updated:', filtered);
       setChartData(filtered);
     }
   }, [forecast, selectedDate, fixedPrice]);
+
+  // Helper to format last updated time
+  const formatLastUpdated = (date) => {
+    if (!date) return 'never';
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
+  };
+
+  const LoadingBadge = ({ timestamp }) => (
+    <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-700/50 px-3 py-1 rounded-full border border-slate-600/50">
+      <span className="animate-pulse">●</span>
+      <span>{formatLastUpdated(timestamp)}</span>
+    </div>
+  );
 
   const loadData = async () => {
     setLoading(true);
@@ -88,12 +137,14 @@ export default function Dashboard() {
   const loadDevices = async () => {
     const data = await getDevices(token);
     setDevices(data);
+    setLastUpdated(prev => ({ ...prev, devices: new Date() }));
   };
 
   const loadCurrentPrice = async () => {
     try {
       const data = await getCurrentPrice();
       setCurrentPrice(data);
+      setLastUpdated(prev => ({ ...prev, price: new Date() }));
     } catch (e) {
       console.error('Failed to load current price:', e);
     }
@@ -104,7 +155,9 @@ export default function Dashboard() {
       const data = await getForecast();
       // Ensure we have an array
       const forecastArray = Array.isArray(data) ? data : (data?.hours || []);
+      console.log('Forecast loaded:', forecastArray);
       setForecast(forecastArray);
+      setLastUpdated(prev => ({ ...prev, forecast: new Date() }));
     } catch (e) {
       console.error('Failed to load forecast:', e);
       setForecast([]);
@@ -115,6 +168,7 @@ export default function Dashboard() {
     try {
       const data = await getSavings(token, fixedPrice);
       setSavings(data);
+      setLastUpdated(prev => ({ ...prev, savings: new Date() }));
     } catch (e) {
       console.error('Failed to load savings:', e);
     }
@@ -250,7 +304,12 @@ export default function Dashboard() {
 
         {/* Overview Tab */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-3xl font-bold text-white">Dashboard Overview</h2>
+              <LoadingBadge timestamp={lastUpdated.devices} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Quick Stats Card */}
             <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-md border border-blue-400/30 rounded-2xl p-8 text-white hover:border-blue-400/60 transition-all duration-300 transform hover:scale-105">
               <div className="text-5xl mb-3">📊</div>
@@ -281,6 +340,7 @@ export default function Dashboard() {
                 {vacationMode ? 'Exit' : 'Enter'}
               </button>
             </div>
+            </div>
           </div>
         )}
 
@@ -289,7 +349,10 @@ export default function Dashboard() {
           <div className="space-y-8">
             {/* Devices List */}
             <div>
-              <h2 className="text-3xl font-bold text-white mb-6">Your Devices</h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-bold text-white">Your Devices</h2>
+                <LoadingBadge timestamp={lastUpdated.devices} />
+              </div>
               {devices.length === 0 ? (
                 <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-12 text-center text-white/70">
                   <div className="text-6xl mb-4">🔌</div>
@@ -427,6 +490,10 @@ export default function Dashboard() {
         {/* Forecast Tab */}
         {activeTab === 'forecast' && (
           <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-3xl font-bold text-white">24-Hour Price Forecast</h2>
+              <LoadingBadge timestamp={lastUpdated.forecast} />
+            </div>
             {/* Date Navigation */}
             <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-md border border-slate-600/30 rounded-2xl p-6 text-white">
               <div className="flex items-center justify-between gap-4">
@@ -471,56 +538,70 @@ export default function Dashboard() {
             ) : (
               <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-md border border-slate-600/30 rounded-2xl p-8 text-white">
                 <h3 className="text-2xl font-bold mb-6">Price Forecast - {selectedDate}</h3>
-                <ResponsiveContainer width="100%" height={400}>
-                  <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
-                    <XAxis 
-                      dataKey="hour" 
-                      stroke="rgba(203, 213, 225, 0.5)"
-                      tickFormatter={(hour) => `${hour}:00`}
-                    />
-                    <YAxis 
-                      stroke="rgba(203, 213, 225, 0.5)"
-                      tickFormatter={(value) => `€${value.toFixed(3)}`}
-                    />
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                        border: '1px solid rgba(59, 130, 246, 0.5)',
-                        borderRadius: '8px',
-                      }}
-                      formatter={(value, name) => {
-                        if (name === 'price') return [`€${value.toFixed(4)}/kWh`, 'Price'];
-                        if (name === 'threshold') return [`€${value.toFixed(4)}/kWh`, 'Threshold'];
-                        return value;
-                      }}
-                      labelFormatter={(label) => `${label}:00`}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="price" 
-                      stroke="#3b82f6" 
-                      fill="url(#colorPrice)"
-                      strokeWidth={3}
-                      name="Price"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="threshold" 
-                      stroke="#ef4444" 
-                      strokeDasharray="5 5"
-                      strokeWidth={2}
-                      name="Your Threshold"
-                      dot={false}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {chartData.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400">
+                    <p>No data available for {selectedDate}</p>
+                  </div>
+                ) : (
+                  <div style={{ width: '100%', height: 400 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 60, bottom: 40 }}>
+                        <defs>
+                          <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
+                        <XAxis 
+                          dataKey="hour" 
+                          stroke="rgba(203, 213, 225, 0.5)"
+                          tickFormatter={(hour) => `${hour}:00`}
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis 
+                          stroke="rgba(203, 213, 225, 0.5)"
+                          tickFormatter={(value) => `€${value.toFixed(3)}`}
+                          width={60}
+                          domain={['dataMin - 0.02', 'dataMax + 0.02']}
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            border: '1px solid rgba(59, 130, 246, 0.5)',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(value, name) => {
+                            if (name === 'price') return [`€${value.toFixed(4)}/kWh`, 'Price'];
+                            if (name === 'threshold') return [`€${value.toFixed(4)}/kWh`, 'Threshold'];
+                            return value;
+                          }}
+                          labelFormatter={(label) => `${label}:00`}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="price" 
+                          stroke="#3b82f6" 
+                          fill="url(#colorPrice)"
+                          strokeWidth={3}
+                          name="Price"
+                          isAnimationActive={true}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="threshold" 
+                          stroke="#ef4444" 
+                          strokeDasharray="5 5"
+                          strokeWidth={2}
+                          name="Your Threshold"
+                          dot={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
             )}
 
@@ -568,8 +649,12 @@ export default function Dashboard() {
         {/* Savings Tab */}
         {activeTab === 'savings' && (
           <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <h2 className="text-3xl font-bold text-white">Savings Calculator</h2>
+              <LoadingBadge timestamp={lastUpdated.savings} />
+            </div>
             <div className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-md border border-purple-400/30 rounded-2xl p-8 text-white">
-              <h2 className="text-2xl font-bold mb-4">Fixed Price Baseline</h2>
+              <h3 className="text-2xl font-bold mb-4">Fixed Price Baseline</h3>
               <div className="flex gap-4 items-end">
                 <div className="flex-1">
                   <label className="text-sm text-slate-300 uppercase tracking-wide block mb-2">Your Fixed Rate (€/kWh)</label>
