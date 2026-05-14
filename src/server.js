@@ -118,6 +118,33 @@ app.delete('/api/devices/:id', authRequired, async (req, res) => {
 });
 
 /**
+ * Override device status (manual toggle - persists for 24 hours)
+ * POST /api/devices/:id/override { status: "ON" | "OFF" }
+ */
+app.post('/api/devices/:id/override', authRequired, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { status } = req.body;
+    
+    if (!['ON', 'OFF'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be ON or OFF' });
+    }
+    
+    // Set override to expire in 24 hours
+    const overrideUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    
+    const device = await prisma.device.update({
+      where: { id, userId: req.user.userId },
+      data: { status, overrideUntil }
+    });
+    
+    res.json(device);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
  * Middleware: structured request/response logging
  */
 app.use((req, res, next) => {
