@@ -122,6 +122,10 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/', (req, res) => {
+  res.status(200).json({ service: 'power-bot', status: 'running', message: 'Backend is active. Use /api/* endpoints.' });
+});
+
 /**
  * Main API endpoint for smart devices
  * Returns JSON with device status, current price, and threshold
