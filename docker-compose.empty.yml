@@ -1,6 +1,33 @@
-version: "3.8"
+version: '3.8'
 
-services: {}
+services:
+  power-bot:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      DATABASE_URL: "postgres://postgres:FAAsOvS0AjzVSEFTrA9UPULHBDPZkXDckLsab8HCnrxxEYNg1v6McAscQ1vgVKHU@gurb7ku2i8cedpyasqn44r22:5432/postgres"
+      JWT_SECRET: "change_this_to_a_secure_random_value"
+      THRESHOLD_EUR: 0.10
+      CHECK_INTERVAL_MS: 300000
+      ELERING_API_URL: "https://dashboard.elering.ee/api/nps/price"
+    depends_on:
+      - db
+    restart: unless-stopped
 
-# Use this Compose file as an empty starting point in Coolify.
-# Add services under `services:` when ready, then deploy the stack in Coolify.
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: FAAsOvS0AjzVSEFTrA9UPULHBDPZkXDckLsab8HCnrxxEYNg1v6McAscQ1vgVKHU
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local
