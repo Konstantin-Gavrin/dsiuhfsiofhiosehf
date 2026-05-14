@@ -1,0 +1,230 @@
+{
+  "dashboard": {
+    "title": "Power Bot - Main Dashboard",
+    "description": "Smart Electricity Grid Control Center Monitoring",
+    "tags": ["power-bot", "monitoring"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Current Electricity Price (EUR/kWh)",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "electricity_price_eur",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "textMode": "auto",
+          "colorMode": "background",
+          "graphMode": "area",
+          "orientation": "auto",
+          "textMode": "value",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.10
+              },
+              {
+                "color": "red",
+                "value": 0.15
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Active Devices",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "active_devices",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "textMode": "value",
+          "colorMode": "value",
+          "graphMode": "area",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Active Users",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "active_users",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Savings (EUR)",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "savings_eur",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Price History (24h)",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "electricity_price_eur",
+            "refId": "A",
+            "legendDisplayMode": "list"
+          }
+        ],
+        "options": {
+          "legend": {
+            "showLegend": true,
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "HTTP Request Rate",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "refId": "A",
+            "legendDisplayMode": "table"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "HTTP Response Time (P95)",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Error Rate",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "rate(errors_total[5m])",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Recent Logs",
+        "type": "logs",
+        "gridPos": {
+          "h": 10,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        },
+        "targets": [
+          {
+            "expr": "{service=\"power-bot\"}",
+            "refId": "A"
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true
+}

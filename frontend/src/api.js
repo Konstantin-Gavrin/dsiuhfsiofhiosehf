@@ -98,6 +98,30 @@ export async function overrideDevice(token, id, status) {
   return res.json();
 }
 
+export async function getVacationMode(token) {
+  const res = await fetch(`${API_URL}/vacation-mode`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to fetch vacation mode');
+  return res.json();
+}
+
+export async function setVacationMode(token, vacationMode) {
+  const res = await fetch(`${API_URL}/vacation-mode`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ vacationMode })
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to set vacation mode');
+  return res.json();
+}
+
+export async function getCurrentPrice() {
+  const res = await fetch(`${API_URL}/price/current`);
+  if (!res.ok) throw await parseError(res, 'Failed to fetch price');
+  return res.json();
+}
+
 export async function getCommandHistory(token, deviceId) {
   const res = await fetch(`${API_URL}/commands/${deviceId}`, {
     headers: { 'Authorization': `Bearer ${token}` }

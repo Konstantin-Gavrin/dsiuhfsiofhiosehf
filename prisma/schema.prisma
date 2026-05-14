@@ -12,12 +12,13 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  role      String   // 'master' | 'user'
-  createdAt DateTime @default(now())
-  devices   Device[]
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  password     String
+  role         String   // 'master' | 'user'
+  vacationMode Boolean  @default(false)  // When true, all non-critical devices are OFF
+  createdAt    DateTime @default(now())
+  devices      Device[]
   savedReports SavedReport[]
 }
 

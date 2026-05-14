@@ -11,10 +11,12 @@ const path = require('path');
 const config = require('./config');
 const priceService = require('./priceService');
 const logger = require('./logger');
+const lokiLogger = require('./lokiLogger');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { register, login } = require('./auth');
 const { authRequired, requireRole } = require('./middleware/auth');
+const { register: prometheusRegister, httpRequests, httpDuration, activeDevices, activeUsers, deviceCommandsSuccess, deviceCommandsFailed, priceUpdates, currentPrice, errorCount } = require('./metrics');
 
 const app = express();
 const publicDir = path.join(__dirname, '..', 'public');
@@ -28,6 +30,21 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Prometheus metrics middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+    const route = req.route?.path || req.path;
+    
+    httpRequests.inc({ method: req.method, route, status: res.statusCode });
+    httpDuration.observe({ method: req.method, route, status: res.statusCode }, duration);
+  });
+  
+  next();
+});
 /**
  * User registration
  * POST /api/register { email, password }
@@ -36,9 +53,13 @@ app.post('/api/register', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await register({ email, password });
+    activeUsers.set(await prisma.user.count());
+    lokiLogger.info('user_registered', { email });
     res.status(201).json({ id: user.id, email: user.email, role: user.role });
   } catch (e) {
     const status = e.message === 'User already exists' ? 409 : 400;
+    errorCount.inc({ error_type: 'registration_error' });
+    lokiLogger.error('registration_error', { email: req.body.email, error: e.message });
     res.status(status).json({ error: e.message });
   }
 });
@@ -51,8 +72,11 @@ app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const { token, user } = await login({ email, password });
+    lokiLogger.info('user_login', { email, userId: user.id });
     res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
   } catch (e) {
+    errorCount.inc({ error_type: 'login_error' });
+    lokiLogger.warn('login_failure', { email: req.body.email });
     res.status(401).json({ error: e.message });
   }
 });
@@ -62,22 +86,35 @@ app.post('/api/login', async (req, res) => {
  */
 app.get('/api/devices', authRequired, async (req, res) => {
   try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
     const devices = await prisma.device.findMany({ where: { userId: req.user.userId } });
-    const currentPrice = priceService.getState();
+    const priceState = priceService.getState();
     
-    // Determine status based on override or current price
+    // Update metrics
+    activeDevices.set(devices.length);
+    currentPrice.set(priceState.current_price_eur);
+    
+    // Determine status based on vacation mode, override, or current price
     const devicesWithStatus = devices.map(device => {
+      // If vacation mode is ON and device is not critical, force OFF
+      if (user.vacationMode && !device.isCritical) {
+        return { ...device, status: 'OFF' };
+      }
+      
       // If override is active (overrideUntil is in future), use saved status
       if (device.overrideUntil && new Date(device.overrideUntil) > new Date()) {
         return device; // Keep override status
       }
+      
       // Otherwise, determine status from current price
-      const computedStatus = currentPrice.current_price_eur <= device.threshold ? 'ON' : 'OFF';
+      const computedStatus = priceState.current_price_eur <= device.threshold ? 'ON' : 'OFF';
       return { ...device, status: computedStatus };
     });
     
     res.json(devicesWithStatus);
   } catch (e) {
+    errorCount.inc({ error_type: 'devices_fetch_error' });
+    lokiLogger.error('devices_fetch_error', { userId: req.user.userId, error: e.message });
     res.status(400).json({ error: e.message });
   }
 });
@@ -88,8 +125,11 @@ app.post('/api/devices', authRequired, async (req, res) => {
     const device = await prisma.device.create({
       data: { name, description, address, threshold, isCritical, userId: req.user.userId },
     });
+    lokiLogger.info('device_created', { deviceId: device.id, name, userId: req.user.userId });
     res.status(201).json(device);
   } catch (e) {
+    errorCount.inc({ error_type: 'device_creation_error' });
+    lokiLogger.error('device_creation_error', { name: req.body.name, error: e.message });
     res.status(400).json({ error: e.message });
   }
 });
@@ -138,36 +178,98 @@ app.post('/api/devices/:id/override', authRequired, async (req, res) => {
       data: { status, overrideUntil }
     });
     
+    deviceCommandsSuccess.inc({ device_id: `${id}`, command: `OVERRIDE_${status}` });
+    lokiLogger.info('device_override', { deviceId: id, status, userId: req.user.userId });
+    
     res.json(device);
+  } catch (e) {
+    deviceCommandsFailed.inc({ device_id: req.params.id, command: 'OVERRIDE' });
+    errorCount.inc({ error_type: 'override_error' });
+    lokiLogger.error('device_override_error', { deviceId: req.params.id, error: e.message });
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * Get vacation mode status
+ * GET /api/vacation-mode
+ */
+app.get('/api/vacation-mode', authRequired, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    res.json({ vacationMode: user.vacationMode });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
 });
 
 /**
- * Middleware: structured request/response logging
+ * Toggle vacation mode
+ * POST /api/vacation-mode { vacationMode: true|false }
  */
-app.use((req, res, next) => {
-  const start = Date.now();
-
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    logger.info({
-      event: 'http_request',
-      method: req.method,
-      path: req.path,
-      status: res.statusCode,
-      duration_ms: duration,
+app.post('/api/vacation-mode', authRequired, async (req, res) => {
+  try {
+    const { vacationMode } = req.body;
+    
+    if (typeof vacationMode !== 'boolean') {
+      return res.status(400).json({ error: 'vacationMode must be a boolean' });
+    }
+    
+    const user = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: { vacationMode }
     });
-  });
+    
+    res.json({ vacationMode: user.vacationMode });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
-  next();
+/**
+ * Get current electricity price
+ * GET /api/price/current
+ */
+app.get('/api/price/current', (req, res) => {
+  try {
+    const state = priceService.getState();
+    currentPrice.set(state.current_price_eur);
+    priceUpdates.inc({ status: 'success' });
+    res.json({
+      current_price_eur: state.current_price_eur,
+      timestamp: new Date().toISOString(),
+      status: state.status
+    });
+  } catch (e) {
+    priceUpdates.inc({ status: 'error' });
+    errorCount.inc({ error_type: 'price_fetch_error' });
+    lokiLogger.error('price_fetch_error', { error: e.message });
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * Prometheus metrics endpoint
+ */
+app.get('/metrics', async (req, res) => {
+  try {
+    // Update active users metric
+    const userCount = await prisma.user.count();
+    activeUsers.set(userCount);
+    
+    res.set('Content-Type', prometheusRegister.contentType);
+    res.end(await prometheusRegister.metrics());
+  } catch (e) {
+    errorCount.inc({ error_type: 'metrics_error' });
+    res.status(500).json({ error: 'Failed to generate metrics' });
+  }
 });
 
 /**
  * Health check endpoint (required by Coolify for monitoring)
  */
 app.get('/health', (req, res) => {
+  lokiLogger.info('health_check', {});
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 

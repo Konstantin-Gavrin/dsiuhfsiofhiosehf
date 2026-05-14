@@ -8,6 +8,8 @@ import {
   getForecast,
   getSavings,
   overrideDevice,
+  getVacationMode,
+  setVacationMode,
 } from '../api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import LogoutButton from '../components/LogoutButton';
@@ -126,6 +128,7 @@ export default function Dashboard() {
         loadCurrentPrice(),
         loadForecast(),
         loadSavings(),
+        loadVacationMode(),
       ]);
     } catch (e) {
       setError(e.message);
@@ -147,6 +150,15 @@ export default function Dashboard() {
       setLastUpdated(prev => ({ ...prev, price: new Date() }));
     } catch (e) {
       console.error('Failed to load current price:', e);
+    }
+  };
+
+  const loadVacationMode = async () => {
+    try {
+      const data = await getVacationMode(token);
+      setVacationMode(data.vacationMode);
+    } catch (e) {
+      console.error('Failed to load vacation mode:', e);
     }
   };
 
@@ -222,14 +234,13 @@ export default function Dashboard() {
   };
 
   const handleVacationMode = async () => {
-    setVacationMode(!vacationMode);
-    const nonCriticalDevices = devices.filter(d => !d.isCritical);
-    for (const device of nonCriticalDevices) {
-      try {
-        await overrideDevice(token, device.id, vacationMode ? 'ON' : 'OFF');
-      } catch (e) {
-        console.error(`Failed to override device ${device.id}:`, e);
-      }
+    const newVacationMode = !vacationMode;
+    try {
+      await setVacationMode(token, newVacationMode);
+      setVacationMode(newVacationMode);
+      await loadDevices(); // Reload devices to reflect new status
+    } catch (e) {
+      setError('Failed to set vacation mode: ' + e.message);
     }
   };
 

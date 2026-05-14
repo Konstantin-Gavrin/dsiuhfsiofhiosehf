@@ -1,0 +1,111 @@
+{
+  "dashboard": {
+    "title": "Power Bot - Device Analysis",
+    "description": "Device performance and command statistics",
+    "tags": ["power-bot", "devices"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "1m",
+    "time": {
+      "from": "now-7d",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Device Commands Success Rate",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "rate(device_commands_success_total[5m])",
+            "refId": "A",
+            "legendDisplayMode": "table"
+          }
+        ],
+        "options": {
+          "legend": {
+            "showLegend": true,
+            "placement": "right"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Device Commands Failed",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "rate(device_commands_failed_total[5m])",
+            "refId": "A",
+            "legendDisplayMode": "table"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Total Commands by Device",
+        "type": "barchart",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(device_commands_success_total[24h])) by (device_id)",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Price Update Status",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "rate(price_updates_total{status=\"success\"}[1h])",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Price Update Errors",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "rate(price_updates_total{status=\"error\"}[1h])",
+            "refId": "A"
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true
+}

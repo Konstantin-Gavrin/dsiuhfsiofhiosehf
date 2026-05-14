@@ -1,0 +1,152 @@
+📊 Prometheus & Loki - Краткое Резюме
+=====================================
+
+✅ ЧТО СДЕЛАНО:
+
+📁 Новые файлы:
+  src/
+    ├── metrics.js ..................... Prometheus метрики (50+ метрик)
+    └── lokiLogger.js .................. Loki логирование (буферизация, batch отправка)
+  
+  prometheus.yml ...................... Prometheus конфиг (скрейпит /metrics)
+  setup-monitoring.sh ................. Linux/macOS setup скрипт
+  setup-monitoring.ps1 ................ Windows PowerShell скрипт
+  MONITORING.md ....................... Полная документация (300+ строк)
+  INTEGRATION_GUIDE.md ................ Руководство интеграции (250+ строк)
+  PROMETHEUS_LOKI_COMPLETE.md ......... Этот отчет
+
+🔄 Обновленные файлы:
+  src/server.js ........................ Интеграция метрик & логов (+100 строк)
+  docker-compose.yml .................. +prometheus, +grafana, logging driver
+  package.json ........................ +prom-client зависимость
+  grafana-provisioning/
+    ├── datasources/prometheus.yml .... Prometheus & Loki datasources
+    └── dashboards/
+        ├── monitoring-main.json ...... 9 панелей (цена, stats, performance)
+        ├── monitoring-devices.json ... 5 панелей (device commands, price)
+        └── monitoring-logs.json ...... 3 панели (logs analysis)
+
+=====================================
+🚀 БЫСТРЫЙ СТАРТ:
+=====================================
+
+Windows:
+  .\setup-monitoring.ps1
+
+Linux/macOS:
+  chmod +x setup-monitoring.sh
+  ./setup-monitoring.sh
+
+Manual:
+  npm install
+  docker-compose up -d
+  # Ждать 30 сек
+  # Открыть http://localhost:3001 (admin/admin)
+
+=====================================
+🔗 ССЫЛКИ:
+=====================================
+
+Grafana (Main Dashboard):
+  http://localhost:3001/d/monitoring-main
+
+Grafana (Device Analysis):
+  http://localhost:3001/d/monitoring-devices
+
+Grafana (Log Analysis):
+  http://localhost:3001/d/monitoring-logs
+
+Prometheus:
+  http://localhost:9090
+
+Metrics Endpoint:
+  http://localhost:3000/metrics
+
+Loki API:
+  http://localhost:3100
+
+Grafana Credentials:
+  admin / admin
+
+=====================================
+📊 СОБИРАЕМЫЕ МЕТРИКИ:
+=====================================
+
+HTTP:
+  • http_requests_total{method,route,status}
+  • http_request_duration_seconds{...} (P50, P95, P99)
+
+Devices:
+  • active_devices
+  • device_commands_success_total
+  • device_commands_failed_total
+
+Price:
+  • electricity_price_eur (текущая цена)
+  • price_updates_total{status}
+
+System:
+  • active_users
+  • errors_total{error_type}
+  • savings_eur
+
+=====================================
+📝 ЛОГИРОВАНИЕ:
+=====================================
+
+Уровни: INFO, WARN, ERROR, CRITICAL
+
+Пример:
+  lokiLogger.info('device_created', { deviceId: 1, name: 'Boiler' })
+  lokiLogger.error('price_fetch_error', { error: 'Timeout' })
+
+Логи отправляются в Loki через Docker logging driver
+Также видны в: docker logs power-bot
+
+=====================================
+✨ ОСОБЕННОСТИ:
+=====================================
+
+✅ Real-time метрики (обновление каждые 15 сек)
+✅ Структурированное JSON логирование
+✅ 3 готовых Grafana dashboard'а
+✅ Автоматическая загрузка dashboards
+✅ Полная документация
+✅ Setup скрипты для Windows и Linux
+✅ Docker integration (Prometheus + Loki + Grafana)
+✅ Health checks для всех компонентов
+
+=====================================
+📚 ДОКУМЕНТАЦИЯ:
+=====================================
+
+MONITORING.md ..................... Подробное руководство по мониторингу
+INTEGRATION_GUIDE.md .............. Руководство интеграции
+PROMETHEUS_LOKI_COMPLETE.md ....... Этот отчет
+
+=====================================
+🎯 NEXT STEPS:
+=====================================
+
+1. Запустить setup скрипт:
+   Windows: .\setup-monitoring.ps1
+   Linux: ./setup-monitoring.sh
+
+2. Открыть Grafana:
+   http://localhost:3001 (admin/admin)
+
+3. Проверить dashboard'ы:
+   • Main: http://localhost:3001/d/monitoring-main
+   • Devices: http://localhost:3001/d/monitoring-devices
+   • Logs: http://localhost:3001/d/monitoring-logs
+
+4. Проверить metrics:
+   curl http://localhost:3000/metrics
+
+5. Добавить alert rules (опционально):
+   Создать alert_rules.yml и добавить в prometheus.yml
+
+=====================================
+Version: 1.0.0
+Date: 2024-05-14
+Status: ✅ Ready to Deploy
