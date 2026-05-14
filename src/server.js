@@ -5,6 +5,7 @@
  */
 
 const express = require('express');
+const cors = require('cors');
 const config = require('./config');
 const priceService = require('./priceService');
 const logger = require('./logger');
@@ -14,6 +15,13 @@ const { register, login } = require('./auth');
 const { authRequired, requireRole } = require('./middleware/auth');
 
 const app = express();
+
+// Enable CORS for all routes
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 app.use(express.json());
 /**
