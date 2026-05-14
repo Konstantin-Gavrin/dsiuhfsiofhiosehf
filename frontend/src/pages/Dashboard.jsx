@@ -8,7 +8,6 @@ import {
   getForecast,
   getSavings,
   overrideDevice,
-  getCommandHistory,
 } from '../api';
 import LogoutButton from '../components/LogoutButton';
 
@@ -32,7 +31,6 @@ export default function Dashboard() {
 
   const token = localStorage.getItem('token');
 
-  // Fetch devices on mount
   useEffect(() => {
     if (!token) {
       setError('Not authenticated');
@@ -41,7 +39,6 @@ export default function Dashboard() {
     loadData();
   }, [token]);
 
-  // Refresh price every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       if (token) loadCurrentPrice();
@@ -136,7 +133,6 @@ export default function Dashboard() {
   const handleOverride = async (id, status) => {
     try {
       await overrideDevice(token, id, status);
-      // Simulate device status update
       setDevices(
         devices.map(d => (d.id === id ? { ...d, status } : d))
       );
@@ -147,7 +143,6 @@ export default function Dashboard() {
 
   const handleVacationMode = async () => {
     setVacationMode(!vacationMode);
-    // In real implementation, would turn off all non-critical devices
     const nonCriticalDevices = devices.filter(d => !d.isCritical);
     for (const device of nonCriticalDevices) {
       try {
@@ -158,50 +153,70 @@ export default function Dashboard() {
     }
   };
 
-  const priceColor = currentPrice?.price_eur > (fixedPrice || 0.15) ? 'text-red-600' : 'text-green-600';
+  const priceColor = currentPrice?.price_eur > (fixedPrice || 0.15) 
+    ? 'from-red-500 to-red-600' 
+    : 'from-green-500 to-emerald-600';
+
+  const priceTextColor = currentPrice?.price_eur > (fixedPrice || 0.15) 
+    ? 'text-red-600' 
+    : 'text-green-600';
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Smart Grid Control Center</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 shadow-2xl">
+        <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold text-white">⚡ Smart Grid</h1>
+            <p className="text-blue-200 text-sm mt-1">Nord Pool Control Center</p>
+          </div>
           <LogoutButton />
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto p-4">
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Error Alert */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-            <button onClick={() => setError('')} className="ml-2 font-bold">×</button>
+          <div className="bg-red-900/20 border border-red-500/50 text-red-300 px-6 py-4 rounded-lg mb-6 flex justify-between items-center backdrop-blur-sm">
+            <span>{error}</span>
+            <button onClick={() => setError('')} className="text-red-400 hover:text-red-300 font-bold text-xl">×</button>
           </div>
         )}
 
         {/* Current Price Display */}
         {currentPrice && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-xl font-bold mb-2">Current Nord Pool Price</h2>
-            <p className={`text-4xl font-bold ${priceColor}`}>
-              €{currentPrice.price_eur?.toFixed(4) || 'N/A'} / kWh
-            </p>
-            <p className="text-gray-600 mt-2">
-              Threshold: €{currentPrice.threshold_eur?.toFixed(4) || 'N/A'} / kWh
-            </p>
+          <div className={`bg-gradient-to-br ${priceColor} rounded-2xl shadow-2xl p-8 mb-8 text-white transform hover:scale-105 transition-transform duration-300`}>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-blue-100 text-sm uppercase tracking-wide font-semibold">Current Nord Pool Price</p>
+                <p className="text-6xl font-black mt-2">€{currentPrice.price_eur?.toFixed(4) || 'N/A'}</p>
+                <p className="text-blue-100 text-sm mt-2">per kWh (incl. 22% VAT)</p>
+              </div>
+              <div className="bg-white/20 rounded-lg p-4 backdrop-blur-sm">
+                <p className="text-sm text-blue-100">Your Threshold</p>
+                <p className="text-3xl font-bold">€{currentPrice.threshold_eur?.toFixed(4)}</p>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-4 mb-6">
+        {/* Tab Navigation */}
+        <div className="flex gap-3 mb-8 overflow-x-auto pb-2">
           {['overview', 'devices', 'forecast', 'savings', 'settings'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded font-medium capitalize ${
+              className={`px-6 py-3 rounded-lg font-semibold capitalize transition-all duration-300 whitespace-nowrap ${
                 activeTab === tab
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg scale-105'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white backdrop-blur-sm'
               }`}
             >
+              {tab === 'overview' && '📊 '}
+              {tab === 'devices' && '🔌 '}
+              {tab === 'forecast' && '📈 '}
+              {tab === 'savings' && '💰 '}
+              {tab === 'settings' && '⚙️ '}
               {tab}
             </button>
           ))}
@@ -209,97 +224,116 @@ export default function Dashboard() {
 
         {/* Overview Tab */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">Quick Stats</h2>
-              <div className="space-y-2">
-                <p className="text-gray-600">Active Devices: <span className="font-bold">{devices.filter(d => d.status === 'ON').length}</span></p>
-                <p className="text-gray-600">Total Devices: <span className="font-bold">{devices.length}</span></p>
-                <p className="text-gray-600">Vacation Mode: <span className={`font-bold ${vacationMode ? 'text-red-600' : 'text-green-600'}`}>{vacationMode ? 'ON' : 'OFF'}</span></p>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Quick Stats Card */}
+            <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-md border border-blue-400/30 rounded-2xl p-8 text-white hover:border-blue-400/60 transition-all duration-300 transform hover:scale-105">
+              <div className="text-5xl mb-3">📊</div>
+              <p className="text-blue-200 text-sm uppercase tracking-wide">Active Devices</p>
+              <p className="text-5xl font-black mt-2">{devices.filter(d => d.status === 'ON').length}</p>
+              <p className="text-blue-300 text-sm mt-2">of {devices.length} total</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">Vacation Mode</h2>
+            <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-md border border-purple-400/30 rounded-2xl p-8 text-white hover:border-purple-400/60 transition-all duration-300 transform hover:scale-105">
+              <div className="text-5xl mb-3">🌍</div>
+              <p className="text-purple-200 text-sm uppercase tracking-wide">System Status</p>
+              <p className="text-5xl font-black mt-2">✓</p>
+              <p className="text-purple-300 text-sm mt-2">All systems online</p>
+            </div>
+
+            {/* Vacation Mode Card */}
+            <div className={`bg-gradient-to-br ${vacationMode ? 'from-red-500/20 to-red-600/20' : 'from-green-500/20 to-emerald-600/20'} backdrop-blur-md border ${vacationMode ? 'border-red-400/30' : 'border-green-400/30'} rounded-2xl p-8 text-white transition-all duration-300`}>
+              <div className="text-5xl mb-3">{vacationMode ? '🏖️' : '🏠'}</div>
+              <p className="text-sm uppercase tracking-wide mb-4">{vacationMode ? 'Vacation Mode Active' : 'Normal Mode'}</p>
               <button
                 onClick={handleVacationMode}
-                className={`px-4 py-2 rounded text-white font-medium ${
-                  vacationMode ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+                className={`w-full py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 ${
+                  vacationMode
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 hover:shadow-lg hover:shadow-red-500/50'
+                    : 'bg-gradient-to-r from-green-600 to-emerald-700 hover:shadow-lg hover:shadow-green-500/50'
                 }`}
               >
-                {vacationMode ? 'Exit Vacation Mode' : 'Enter Vacation Mode'}
+                {vacationMode ? 'Exit' : 'Enter'}
               </button>
-              <p className="text-sm text-gray-600 mt-2">
-                {vacationMode
-                  ? 'All non-critical devices are disabled. Critical devices remain active.'
-                  : 'Enable to automatically manage non-critical devices based on price.'}
-              </p>
             </div>
           </div>
         )}
 
         {/* Devices Tab */}
         {activeTab === 'devices' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">Your Devices</h2>
+          <div className="space-y-8">
+            {/* Devices List */}
+            <div>
+              <h2 className="text-3xl font-bold text-white mb-6">Your Devices</h2>
               {devices.length === 0 ? (
-                <p className="text-gray-600">No devices yet. Add one below.</p>
+                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-12 text-center text-white/70">
+                  <div className="text-6xl mb-4">🔌</div>
+                  <p className="text-xl">No devices yet. Add one below to get started!</p>
+                </div>
               ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {devices.map(device => (
-                    <div key={device.id} className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="text-lg font-bold">{device.name}</h3>
-                          <p className="text-sm text-gray-600">{device.description}</p>
+                    <div
+                      key={device.id}
+                      className="group bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-md border border-slate-600/30 rounded-2xl p-6 text-white hover:border-blue-400/50 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-2xl font-bold">{device.name}</h3>
+                          <p className="text-slate-400 text-sm mt-1">{device.description}</p>
                         </div>
-                        <span className={`px-3 py-1 rounded text-white font-medium ${
-                          device.status === 'ON' ? 'bg-green-600' : 'bg-red-600'
+                        <div className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 ${
+                          device.status === 'ON'
+                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg shadow-green-500/50'
+                            : 'bg-gradient-to-r from-red-500 to-red-600 shadow-lg shadow-red-500/50'
                         }`}>
                           {device.status || 'OFF'}
-                        </span>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
-                        <div>
-                          <label className="text-xs text-gray-600">Address</label>
-                          <p className="font-medium">{device.address}</p>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-600">Threshold (€/kWh)</label>
-                          <input
-                            type="number"
-                            value={device.threshold}
-                            onChange={(e) => handleUpdateThreshold(device.id, e.target.value)}
-                            step="0.01"
-                            className="w-full border rounded px-2 py-1"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-600">Critical</label>
-                          <p className="font-medium">{device.isCritical ? 'Yes' : 'No'}</p>
-                        </div>
+                      <div className="bg-white/5 rounded-lg p-4 mb-4 backdrop-blur-sm border border-white/10">
+                        <p className="text-xs text-slate-400 uppercase tracking-wide">Address</p>
+                        <p className="font-mono text-sm text-white mt-1">{device.address}</p>
+                      </div>
+
+                      <div className="mb-4">
+                        <label className="text-xs text-slate-400 uppercase tracking-wide block mb-2">Threshold (€/kWh)</label>
+                        <input
+                          type="number"
+                          value={device.threshold}
+                          onChange={(e) => handleUpdateThreshold(device.id, e.target.value)}
+                          step="0.01"
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-4">
+                        <input
+                          type="checkbox"
+                          checked={device.isCritical}
+                          readOnly
+                          className="w-4 h-4"
+                        />
+                        <label className="text-xs text-slate-400">Critical Device</label>
                       </div>
 
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleOverride(device.id, 'ON')}
-                          className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-500 hover:to-emerald-600 text-white py-2 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-green-500/50"
                         >
-                          Turn ON
+                          ON
                         </button>
                         <button
                           onClick={() => handleOverride(device.id, 'OFF')}
-                          className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                          className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white py-2 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-red-500/50"
                         >
-                          Turn OFF
+                          OFF
                         </button>
                         <button
                           onClick={() => handleDeleteDevice(device.id)}
-                          className="px-3 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm ml-auto"
+                          className="px-4 py-2 bg-white/10 hover:bg-red-600/50 text-white/70 hover:text-white rounded-lg font-semibold transition-all duration-300 border border-white/20 hover:border-red-400/50"
                         >
-                          Delete
+                          🗑️
                         </button>
                       </div>
                     </div>
@@ -309,15 +343,15 @@ export default function Dashboard() {
             </div>
 
             {/* Add Device Form */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">Add New Device</h2>
-              <form onSubmit={handleAddDevice} className="space-y-4">
+            <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-md border border-blue-400/30 rounded-2xl p-8 text-white">
+              <h2 className="text-3xl font-bold mb-6">Add New Device</h2>
+              <form onSubmit={handleAddDevice} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input
                   type="text"
                   placeholder="Device Name"
                   value={newDeviceForm.name}
                   onChange={(e) => setNewDeviceForm({ ...newDeviceForm, name: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
+                  className="md:col-span-2 bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
                   required
                 />
                 <input
@@ -325,14 +359,14 @@ export default function Dashboard() {
                   placeholder="Description"
                   value={newDeviceForm.description}
                   onChange={(e) => setNewDeviceForm({ ...newDeviceForm, description: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
+                  className="md:col-span-2 bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
                 />
                 <input
                   type="text"
                   placeholder="Address (IP/API/MQTT)"
                   value={newDeviceForm.address}
                   onChange={(e) => setNewDeviceForm({ ...newDeviceForm, address: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
+                  className="md:col-span-2 bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
                   required
                 />
                 <input
@@ -341,23 +375,23 @@ export default function Dashboard() {
                   step="0.01"
                   value={newDeviceForm.threshold}
                   onChange={(e) => setNewDeviceForm({ ...newDeviceForm, threshold: parseFloat(e.target.value) })}
-                  className="w-full border rounded px-3 py-2"
+                  className="bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
                   required
                 />
-                <label className="flex items-center">
+                <label className="flex items-center gap-3 bg-white/5 rounded-lg px-4 py-3 border border-white/10 cursor-pointer hover:bg-white/10 transition-all duration-300">
                   <input
                     type="checkbox"
                     checked={newDeviceForm.isCritical}
                     onChange={(e) => setNewDeviceForm({ ...newDeviceForm, isCritical: e.target.checked })}
-                    className="mr-2"
+                    className="w-5 h-5 cursor-pointer"
                   />
-                  Mark as Critical (won't be disabled in vacation mode)
+                  <span className="font-semibold">Critical Device</span>
                 </label>
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-medium"
+                  className="md:col-span-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-blue-500/50"
                 >
-                  Add Device
+                  + Add Device
                 </button>
               </form>
             </div>
@@ -366,42 +400,35 @@ export default function Dashboard() {
 
         {/* Forecast Tab */}
         {activeTab === 'forecast' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-4">24-Hour Price Forecast</h2>
+          <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 backdrop-blur-md border border-slate-600/30 rounded-2xl p-8 text-white">
+            <h2 className="text-3xl font-bold mb-6">24-Hour Price Forecast</h2>
             {forecast.length === 0 ? (
-              <p className="text-gray-600">Loading forecast...</p>
+              <p className="text-slate-400 text-center py-8">Loading forecast...</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Time</th>
-                      <th className="px-4 py-2 text-left">Price (€/kWh)</th>
-                      <th className="px-4 py-2 text-left">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {forecast.slice(0, 24).map((hour, i) => (
-                      <tr key={i} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-2">
-                          {new Date(hour.timestamp).toLocaleTimeString()}
-                        </td>
-                        <td className={`px-4 py-2 font-bold ${
-                          hour.price_eur > (fixedPrice || 0.15) ? 'text-red-600' : 'text-green-600'
+                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2">
+                  {forecast.slice(0, 24).map((hour, i) => {
+                    const isPeak = hour.price_eur > (fixedPrice || 0.15);
+                    return (
+                      <div
+                        key={i}
+                        className={`p-4 rounded-xl text-center transition-all duration-300 transform hover:scale-110 cursor-pointer ${
+                          isPeak
+                            ? 'bg-gradient-to-b from-red-500/30 to-red-600/20 border border-red-400/50 hover:shadow-lg hover:shadow-red-500/50'
+                            : 'bg-gradient-to-b from-green-500/30 to-green-600/20 border border-green-400/50 hover:shadow-lg hover:shadow-green-500/50'
+                        }`}
+                      >
+                        <p className="text-xs text-slate-300 uppercase tracking-wide">{new Date(hour.timestamp).getHours()}:00</p>
+                        <p className="text-xl font-bold mt-2">€{hour.price_eur?.toFixed(3)}</p>
+                        <div className={`mt-2 px-2 py-1 rounded text-xs font-semibold inline-block ${
+                          isPeak ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
                         }`}>
-                          €{hour.price_eur?.toFixed(4)}
-                        </td>
-                        <td className="px-4 py-2">
-                          <span className={`px-2 py-1 rounded text-xs text-white ${
-                            hour.status === 'ON' ? 'bg-green-600' : 'bg-red-600'
-                          }`}>
-                            {hour.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          {hour.status}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -409,50 +436,67 @@ export default function Dashboard() {
 
         {/* Savings Tab */}
         {activeTab === 'savings' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">Set Fixed Price for Comparison</h2>
-              <div className="flex gap-4">
-                <input
-                  type="number"
-                  placeholder="Fixed Price (€/kWh)"
-                  step="0.01"
-                  value={fixedPrice}
-                  onChange={(e) => {
-                    setFixedPrice(e.target.value);
-                    // Reload savings with new price
-                    setTimeout(() => loadSavings(), 500);
-                  }}
-                  className="border rounded px-3 py-2 flex-1"
-                />
+          <div className="space-y-8">
+            <div className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-md border border-purple-400/30 rounded-2xl p-8 text-white">
+              <h2 className="text-2xl font-bold mb-4">Fixed Price Baseline</h2>
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <label className="text-sm text-slate-300 uppercase tracking-wide block mb-2">Your Fixed Rate (€/kWh)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={fixedPrice}
+                    onChange={(e) => {
+                      setFixedPrice(e.target.value);
+                      setTimeout(() => loadSavings(), 500);
+                    }}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white text-2xl font-bold placeholder-slate-400 focus:outline-none focus:border-purple-400/50 focus:ring-2 focus:ring-purple-400/20 transition-all duration-300"
+                  />
+                </div>
               </div>
             </div>
 
             {savings && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-bold text-green-600 mb-2">Daily Savings</h3>
-                  <p className="text-3xl font-bold">€{savings.daily?.toFixed(2)}</p>
-                  <p className="text-sm text-gray-600 mt-2">vs. fixed price €{savings.fixedPrice}/kWh</p>
+                <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 backdrop-blur-md border border-green-400/30 rounded-2xl p-8 text-white hover:border-green-400/60 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/50">
+                  <p className="text-green-200 text-sm uppercase tracking-wide font-semibold">Daily Savings</p>
+                  <p className="text-5xl font-black mt-3">€{savings.daily?.toFixed(2)}</p>
+                  <p className="text-green-300 text-sm mt-2 opacity-80">24 hours of optimization</p>
                 </div>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-bold text-green-600 mb-2">Weekly Savings</h3>
-                  <p className="text-3xl font-bold">€{savings.weekly?.toFixed(2)}</p>
+
+                <div className="bg-gradient-to-br from-blue-500/20 to-cyan-600/20 backdrop-blur-md border border-blue-400/30 rounded-2xl p-8 text-white hover:border-blue-400/60 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/50">
+                  <p className="text-blue-200 text-sm uppercase tracking-wide font-semibold">Weekly Savings</p>
+                  <p className="text-5xl font-black mt-3">€{savings.weekly?.toFixed(2)}</p>
+                  <p className="text-blue-300 text-sm mt-2 opacity-80">7 days of savings</p>
                 </div>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-bold text-green-600 mb-2">Monthly Savings</h3>
-                  <p className="text-3xl font-bold">€{savings.monthly?.toFixed(2)}</p>
+
+                <div className="bg-gradient-to-br from-purple-500/20 to-pink-600/20 backdrop-blur-md border border-purple-400/30 rounded-2xl p-8 text-white hover:border-purple-400/60 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/50">
+                  <p className="text-purple-200 text-sm uppercase tracking-wide font-semibold">Monthly Savings</p>
+                  <p className="text-5xl font-black mt-3">€{savings.monthly?.toFixed(2)}</p>
+                  <p className="text-purple-300 text-sm mt-2 opacity-80">30 days of optimization</p>
                 </div>
               </div>
             )}
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-bold text-blue-900 mb-2">How Savings are Calculated</h3>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Your average consumption: 2 kW</li>
-                <li>• Fixed price baseline: €{fixedPrice || 0.15}/kWh</li>
-                <li>• Actual average price: €{savings?.actualAvgPrice?.toFixed(4)}/kWh</li>
-                <li>• Daily savings = (Fixed - Actual) × 24 hours × 2 kW</li>
+            <div className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 backdrop-blur-md border border-cyan-400/30 rounded-2xl p-8 text-white">
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">💡 How Savings Work</h3>
+              <ul className="space-y-3 text-sm text-cyan-100">
+                <li className="flex items-start gap-3">
+                  <span className="text-cyan-400 font-bold flex-shrink-0">1.</span>
+                  <span>Average Consumption: <span className="font-bold text-white">2 kW</span></span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-cyan-400 font-bold flex-shrink-0">2.</span>
+                  <span>Your Fixed Price: <span className="font-bold text-white">€{fixedPrice}/kWh</span></span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-cyan-400 font-bold flex-shrink-0">3.</span>
+                  <span>Actual Avg Price: <span className="font-bold text-white">€{savings?.actualAvgPrice?.toFixed(4)}/kWh</span></span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-cyan-400 font-bold flex-shrink-0">4.</span>
+                  <span>Daily Savings = (Fixed - Actual) × 24h × 2kW</span>
+                </li>
               </ul>
             </div>
           </div>
@@ -460,24 +504,41 @@ export default function Dashboard() {
 
         {/* Settings Tab */}
         {activeTab === 'settings' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-4">Settings</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notifications
-                </label>
-                <p className="text-gray-600 text-sm">
-                  Telegram and Discord notifications can be configured in the settings.
-                </p>
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-orange-500/20 to-red-600/20 backdrop-blur-md border border-orange-400/30 rounded-2xl p-8 text-white">
+              <h2 className="text-3xl font-bold mb-6 flex items-center gap-2">🔔 Smart Notifications</h2>
+              <p className="text-orange-100 mb-4">Configure alerts for price changes, device status, and system events</p>
+              <div className="space-y-4">
+                <div className="bg-white/10 rounded-lg p-4 border border-white/10">
+                  <label className="text-sm font-semibold text-orange-200 uppercase tracking-wide">Telegram Bot Token</label>
+                  <input
+                    type="password"
+                    placeholder="1234567890:ABCdefGHIjklmnoPQRstUVWxyz"
+                    className="w-full mt-2 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-orange-400/50 focus:ring-2 focus:ring-orange-400/20 transition-all duration-300"
+                  />
+                </div>
+                <div className="bg-white/10 rounded-lg p-4 border border-white/10">
+                  <label className="text-sm font-semibold text-orange-200 uppercase tracking-wide">Discord Webhook URL</label>
+                  <input
+                    type="password"
+                    placeholder="https://discord.com/api/webhooks/..."
+                    className="w-full mt-2 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-orange-400/50 focus:ring-2 focus:ring-orange-400/20 transition-all duration-300"
+                  />
+                </div>
+                <button className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-orange-500/50">
+                  Save Notification Settings
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  API Key
-                </label>
-                <p className="text-gray-600 text-sm">
-                  Your Telegram Bot token or Discord Webhook can be added here.
-                </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-indigo-500/20 to-purple-600/20 backdrop-blur-md border border-indigo-400/30 rounded-2xl p-8 text-white">
+              <h2 className="text-3xl font-bold mb-6 flex items-center gap-2">🔐 API Integration</h2>
+              <p className="text-indigo-100 mb-4">Control your devices via API endpoints</p>
+              <div className="bg-white/10 rounded-lg p-4 border border-white/10 font-mono text-sm text-indigo-300">
+                <p>GET /api/price/current</p>
+                <p>POST /api/devices/:id/override</p>
+                <p>GET /api/forecast</p>
+                <p>GET /api/savings</p>
               </div>
             </div>
           </div>
