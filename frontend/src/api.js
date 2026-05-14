@@ -1,5 +1,5 @@
 // Minimal API client for backend auth and device endpoints
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export async function login(email, password) {
   const res = await fetch(`${API_URL}/login`, {

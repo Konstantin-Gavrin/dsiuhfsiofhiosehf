@@ -6,6 +6,8 @@
 
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const config = require('./config');
 const priceService = require('./priceService');
 const logger = require('./logger');
@@ -15,6 +17,8 @@ const { register, login } = require('./auth');
 const { authRequired, requireRole } = require('./middleware/auth');
 
 const app = express();
+const publicDir = path.join(__dirname, '..', 'public');
+const hasFrontendBuild = fs.existsSync(path.join(publicDir, 'index.html'));
 
 // Enable CORS for all routes
 app.use(cors({
@@ -122,9 +126,11 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get('/', (req, res) => {
-  res.status(200).json({ service: 'power-bot', status: 'running', message: 'Backend is active. Use /api/* endpoints.' });
-});
+if (!hasFrontendBuild) {
+  app.get('/', (req, res) => {
+    res.status(200).json({ service: 'power-bot', status: 'running', message: 'Backend is active. Use /api/* endpoints.' });
+  });
+}
 
 /**
  * Main API endpoint for smart devices
@@ -200,6 +206,13 @@ app.get('/api/status', (req, res) => {
     },
   });
 });
+
+if (hasFrontendBuild) {
+  app.use(express.static(publicDir));
+  app.get(/^\/(?!api|health).*/, (req, res) => {
+    res.sendFile(path.join(publicDir, 'index.html'));
+  });
+}
 
 /**
  * 404 handler

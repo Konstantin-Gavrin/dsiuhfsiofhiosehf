@@ -20,7 +20,18 @@ RUN npm rebuild bcrypt --build-from-source
 # Generate Prisma client with correct binaryTargets after schema is ready
 RUN npx prisma generate
 
-# Stage 2: Runtime - Final image
+# Stage 2.5: Frontend builder
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+COPY frontend/package*.json ./
+RUN npm install
+
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 3: Runtime - Final image
 FROM node:18-slim
 
 WORKDIR /app
@@ -41,6 +52,9 @@ COPY --chown=nodejs:nodejs prisma/ ./prisma/
 # Copy application source code
 COPY --chown=nodejs:nodejs src/ ./src/
 COPY --chown=nodejs:nodejs package*.json ./
+
+# Copy built frontend so backend can serve SPA on the same domain
+COPY --from=frontend-builder --chown=nodejs:nodejs /frontend/dist ./public
 
 # Switch to non-root user
 USER nodejs
