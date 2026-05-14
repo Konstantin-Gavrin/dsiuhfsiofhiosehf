@@ -28,6 +28,8 @@ model Device {
   address     String   // IP, API endpoint, or MQTT topic
   threshold   Float
   isCritical  Boolean  @default(false)
+  status      String   @default("OFF")  // 'ON' or 'OFF' - persisted status
+  overrideUntil DateTime?  // When manual override expires (if any)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
   commands    CommandLog[]

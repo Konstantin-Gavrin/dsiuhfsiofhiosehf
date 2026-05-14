@@ -61,8 +61,25 @@ app.post('/api/login', async (req, res) => {
  * CRUD for devices (auth required)
  */
 app.get('/api/devices', authRequired, async (req, res) => {
-  const devices = await prisma.device.findMany({ where: { userId: req.user.userId } });
-  res.json(devices);
+  try {
+    const devices = await prisma.device.findMany({ where: { userId: req.user.userId } });
+    const currentPrice = priceService.getState();
+    
+    // Determine status based on override or current price
+    const devicesWithStatus = devices.map(device => {
+      // If override is active (overrideUntil is in future), use saved status
+      if (device.overrideUntil && new Date(device.overrideUntil) > new Date()) {
+        return device; // Keep override status
+      }
+      // Otherwise, determine status from current price
+      const computedStatus = currentPrice.current_price_eur <= device.threshold ? 'ON' : 'OFF';
+      return { ...device, status: computedStatus };
+    });
+    
+    res.json(devicesWithStatus);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 app.post('/api/devices', authRequired, async (req, res) => {
@@ -309,6 +326,15 @@ app.post('/api/devices/:id/override', authRequired, async (req, res) => {
         deviceId: id,
         command: `OVERRIDE_${status}`,
         status: 'SENT',
+      },
+    });
+
+    // Update device status
+    await prisma.device.update({
+      where: { id },
+      data: {
+        status,
+        overrideUntil: overrideUntil ? new Date(overrideUntil) : null,
       },
     });
 
