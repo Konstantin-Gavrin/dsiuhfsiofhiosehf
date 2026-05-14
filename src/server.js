@@ -38,7 +38,8 @@ app.post('/api/register', async (req, res) => {
     const user = await register({ email, password });
     res.status(201).json({ id: user.id, email: user.email, role: user.role });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    const status = e.message === 'User already exists' ? 409 : 400;
+    res.status(status).json({ error: e.message });
   }
 });
 
