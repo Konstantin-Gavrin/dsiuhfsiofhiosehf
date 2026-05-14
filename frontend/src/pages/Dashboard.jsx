@@ -85,12 +85,12 @@ export default function Dashboard() {
     if (forecast.length > 0 && selectedDate) {
       const filtered = forecast
         .filter(hour => {
-          const hourDate = new Date(hour.timestamp).toISOString().split('T')[0];
+          const hourDate = new Date(hour.timestamp * 1000).toISOString().split('T')[0];
           return hourDate === selectedDate;
         })
         .map(hour => ({
           timestamp: hour.timestamp,
-          hour: new Date(hour.timestamp).getHours(),
+          hour: new Date(hour.timestamp * 1000).getHours(),
           price: parseFloat(hour.price_eur),
           status: hour.status,
           threshold: parseFloat(fixedPrice),
