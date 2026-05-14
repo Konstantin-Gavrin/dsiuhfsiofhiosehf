@@ -12,7 +12,7 @@ COPY package*.json ./
 COPY prisma/ ./prisma/
 
 # Install production dependencies (skip postinstall scripts to avoid premature generation)
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm install --omit=dev --ignore-scripts
 
 # Rebuild bcrypt for Linux platform (required for native module)
 RUN npm rebuild bcrypt --build-from-source
