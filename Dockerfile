@@ -4,8 +4,8 @@ FROM node:18-slim AS builder
 
 WORKDIR /build
 
-# Install OpenSSL for Prisma
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Install OpenSSL, Python, and build tools needed for bcrypt compilation
+RUN apt-get update && apt-get install -y openssl python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 # Copy package files (do this before source code for Docker layer caching)
 COPY package*.json ./
@@ -13,6 +13,9 @@ COPY prisma/ ./prisma/
 
 # Install production dependencies (skip postinstall scripts to avoid premature generation)
 RUN npm ci --omit=dev --ignore-scripts
+
+# Rebuild bcrypt for Linux platform (required for native module)
+RUN npm rebuild bcrypt --build-from-source
 
 # Generate Prisma client with correct binaryTargets after schema is ready
 RUN npx prisma generate
