@@ -208,6 +208,155 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+/**
+ * GET /api/price/current
+ * Returns current electricity price and system state
+ */
+app.get('/api/price/current', (req, res) => {
+  try {
+    const state = priceService.getState();
+    res.json({
+      price_eur: state.current_price_eur,
+      threshold_eur: state.threshold,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch current price' });
+  }
+});
+
+/**
+ * GET /api/forecast
+ * Returns 24-hour price forecast from Elering API
+ */
+app.get('/api/forecast', (req, res) => {
+  try {
+    const forecast = priceService.getForecast();
+    res.json({ hours: forecast || [] });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch forecast' });
+  }
+});
+
+/**
+ * GET /api/savings
+ * Calculate savings report for authenticated user
+ * Returns daily, weekly, monthly savings
+ */
+app.get('/api/savings', authRequired, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const fixedPriceEur = parseFloat(req.query.fixedPrice || '0.15');
+
+    // Get all command logs for user's devices
+    const devices = await prisma.device.findMany({ where: { userId } });
+    const deviceIds = devices.map(d => d.id);
+
+    if (deviceIds.length === 0) {
+      return res.json({ daily: 0, weekly: 0, monthly: 0, details: [] });
+    }
+
+    const commands = await prisma.commandLog.findMany({
+      where: { deviceId: { in: deviceIds } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Simple calculation: assume average consumption
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Mock calculation: savings = (fixed price - actual avg price) * hours * power
+    const avgActualPrice = 0.08; // Mock
+    const avgPower = 2.0; // kW
+    const dailySavings = Math.max(0, (fixedPriceEur - avgActualPrice) * 24 * avgPower);
+    const weeklySavings = dailySavings * 7;
+    const monthlySavings = dailySavings * 30;
+
+    res.json({
+      daily: parseFloat(dailySavings.toFixed(2)),
+      weekly: parseFloat(weeklySavings.toFixed(2)),
+      monthly: parseFloat(monthlySavings.toFixed(2)),
+      fixedPrice: fixedPriceEur,
+      actualAvgPrice: avgActualPrice,
+      currency: 'EUR',
+    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * POST /api/devices/:id/override
+ * Manual override: force device ON or OFF
+ */
+app.post('/api/devices/:id/override', authRequired, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { status, overrideUntil } = req.body; // status: 'ON' or 'OFF'
+
+    const device = await prisma.device.findUnique({
+      where: { id, userId: req.user.userId },
+    });
+
+    if (!device) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    // Log the command
+    await prisma.commandLog.create({
+      data: {
+        deviceId: id,
+        command: `OVERRIDE_${status}`,
+        status: 'SENT',
+      },
+    });
+
+    res.json({
+      deviceId: id,
+      overrideStatus: status,
+      overrideUntil: overrideUntil || null,
+      timestamp: new Date().toISOString(),
+    });
+
+    logger.info({
+      event: 'device_override',
+      deviceId: id,
+      status,
+      userId: req.user.userId,
+    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * GET /api/commands/:deviceId
+ * Get command history for a device
+ */
+app.get('/api/commands/:deviceId', authRequired, async (req, res) => {
+  try {
+    const deviceId = parseInt(req.params.deviceId, 10);
+    const device = await prisma.device.findUnique({
+      where: { id: deviceId, userId: req.user.userId },
+    });
+
+    if (!device) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    const commands = await prisma.commandLog.findMany({
+      where: { deviceId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    res.json({ commands });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 if (hasFrontendBuild) {
   app.use(express.static(publicDir));
   app.get(/^\/(?!api|health).*/, (req, res) => {

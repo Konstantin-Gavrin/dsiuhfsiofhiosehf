@@ -172,8 +172,50 @@ const getState = () => {
   };
 };
 
+/**
+ * Fetch 24-hour price forecast from Elering API
+ */
+const getForecast = async () => {
+  try {
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(start.getHours() - 1);
+    const end = new Date(now);
+    end.setHours(end.getHours() + 24);
+
+    const startStr = start.toISOString().split('.')[0] + 'Z';
+    const endStr = end.toISOString().split('.')[0] + 'Z';
+
+    const response = await axios.get(config.eleringApiUrl, {
+      params: {
+        start: startStr,
+        end: endStr,
+        fields: 'ee',
+      },
+      timeout: 10000,
+    });
+
+    if (!response.data || !response.data.data?.ee) {
+      return [];
+    }
+
+    return response.data.data.ee.map(item => ({
+      timestamp: item.timestamp,
+      price_eur: convertPrice(item.price),
+      status: determineStatus(convertPrice(item.price), config.thresholdEur),
+    }));
+  } catch (error) {
+    logger.error({
+      event: 'forecast_fetch_failed',
+      message: error.message,
+    });
+    return [];
+  }
+};
+
 module.exports = {
   startPriceCheck,
   getState,
   checkPrice,
+  getForecast,
 };

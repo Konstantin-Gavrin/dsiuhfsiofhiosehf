@@ -38,4 +38,71 @@ export async function getDevices(token) {
   if (!res.ok) throw await parseError(res, 'Failed to fetch devices');
   return res.json();
 }
+
+export async function createDevice(token, device) {
+  const res = await fetch(`${API_URL}/devices`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(device)
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to create device');
+  return res.json();
+}
+
+export async function updateDevice(token, id, updates) {
+  const res = await fetch(`${API_URL}/devices/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(updates)
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to update device');
+  return res.json();
+}
+
+export async function deleteDevice(token, id) {
+  const res = await fetch(`${API_URL}/devices/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to delete device');
+  return res.ok;
+}
+
+export async function getCurrentPrice() {
+  const res = await fetch(`${API_URL}/price/current`);
+  if (!res.ok) throw await parseError(res, 'Failed to fetch price');
+  return res.json();
+}
+
+export async function getForecast() {
+  const res = await fetch(`${API_URL}/forecast`);
+  if (!res.ok) throw await parseError(res, 'Failed to fetch forecast');
+  return res.json();
+}
+
+export async function getSavings(token, fixedPrice) {
+  const res = await fetch(`${API_URL}/savings?fixedPrice=${fixedPrice}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to fetch savings');
+  return res.json();
+}
+
+export async function overrideDevice(token, id, status) {
+  const res = await fetch(`${API_URL}/devices/${id}/override`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ status })
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to override device');
+  return res.json();
+}
+
+export async function getCommandHistory(token, deviceId) {
+  const res = await fetch(`${API_URL}/commands/${deviceId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to fetch command history');
+  return res.json();
+}
 // Add more API methods as needed
