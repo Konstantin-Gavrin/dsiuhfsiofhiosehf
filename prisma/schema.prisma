@@ -28,14 +28,14 @@ model Device {
   address     String   // IP, API endpoint, or MQTT topic
   threshold   Float
   isCritical  Boolean  @default(false)
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
   commands    CommandLog[]
 }
 
 model CommandLog {
   id         Int      @id @default(autoincrement())
-  device     Device   @relation(fields: [deviceId], references: [id])
+  device     Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   deviceId   Int
   command    String
   status     String
@@ -44,7 +44,7 @@ model CommandLog {
 
 model SavedReport {
   id         Int      @id @default(autoincrement())
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId     Int
   type       String   // 'säästuaruanne', 'prognoos'
   data       Json
