@@ -1,7 +1,9 @@
-name: Build and publish Power Bot image
+name: CI/CD Power Bot
 
 on:
   push:
+    branches: [ main, "feature/**" ]
+  pull_request:
     branches: [ main ]
 
 permissions:
@@ -10,7 +12,45 @@ permissions:
   id-token: write
 
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Lint backend
+        run: npm run lint
+
+      - name: Run backend tests
+        run: npm run test
+
+      - name: Dependency audit
+        run: npm run audit
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend/frontend
+
+      - name: Lint frontend
+        run: npm run lint
+        working-directory: frontend/frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend/frontend
+
   build-and-push:
+    needs: quality
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -39,3 +79,18 @@ jobs:
           tags: |
             ghcr.io/konstantin-gavrin/dsiuhfsiofhiosehf:latest
             ghcr.io/konstantin-gavrin/dsiuhfsiofhiosehf:${{ github.sha }}
+
+  deploy-coolify:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify deployment
+        env:
+          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+        run: |
+          if [ -z "$COOLIFY_WEBHOOK_URL" ]; then
+            echo "COOLIFY_WEBHOOK_URL is not set"
+            exit 1
+          fi
+          curl -X POST "$COOLIFY_WEBHOOK_URL"

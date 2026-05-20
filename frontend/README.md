@@ -1,16 +1,18 @@
-# Nutika Elektrivõrgu Juhtimiskeskus Frontend
+# Nutika Elektrivorgu Juhtimiskeskus Frontend
 
-React + Vite frontend for smart electricity grid control center.
-
-## Pages
-- Login
-- Register
-- Dashboard
-- Device Management
+Production frontend source is in `frontend/frontend`.
 
 ## Setup
-```
-cd frontend
+
+```bash
+cd frontend/frontend
 npm install
 npm run dev
+```
+
+## Build
+
+```bash
+cd frontend/frontend
+npm run build
 ```

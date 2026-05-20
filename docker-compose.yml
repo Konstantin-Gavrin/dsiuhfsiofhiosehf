@@ -17,8 +17,14 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
+      - HOST=0.0.0.0
+      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=${DATABASE_URL}
       - THRESHOLD_EUR=0.10
       - CHECK_INTERVAL_MS=300000
+      - REQUEST_TIMEOUT_MS=10000
+      - ALERT_HIGH_PRICE_EUR=0.25
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
       - ELERING_API_URL=https://dashboard.elering.ee/api/nps/price
       - LOKI_URL=http://loki-master:3100
     depends_on:
@@ -83,6 +89,16 @@ services:
       - /var/log:/var/log:ro
       - ./grafana-provisioning/promtail:/opt/promtail-config:ro
     command: -config.file=/opt/promtail-config/promtail-config.yml -config.expand-env=true
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - power-bot-network
     restart: unless-stopped
 
 networks:

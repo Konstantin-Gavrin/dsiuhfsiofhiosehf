@@ -1,0 +1,77 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "API Latency P50/P95/P99",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "power_bot_http_latency_ms{quantile=\"0.50\"}" },
+        { "refId": "B", "expr": "power_bot_http_latency_ms{quantile=\"0.95\"}" },
+        { "refId": "C", "expr": "power_bot_http_latency_ms{quantile=\"0.99\"}" }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "type": "timeseries",
+      "title": "Device Commands Over Time",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "increase(power_bot_device_commands_total[10m])" }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "type": "timeseries",
+      "title": "Error Logs Over Time",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "refId": "A", "expr": "sum(count_over_time({service=\"power-bot\", level=~\"error|critical\"}[5m]))" }
+      ],
+      "datasource": { "type": "loki", "uid": "loki" }
+    },
+    {
+      "type": "timeseries",
+      "title": "System Resources (RAM/Uptime)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "refId": "A", "expr": "process_resident_memory_bytes" },
+        { "refId": "B", "expr": "process_uptime_seconds" }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "type": "timeseries",
+      "title": "Spot Price History",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service=\"power-bot\"} |= \"price_check\" | json | unwrap price_eur | __error__=\"\""
+        }
+      ],
+      "datasource": { "type": "loki", "uid": "loki" }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "title": "Power Bot Metrics and Reliability",
+  "uid": "power-bot-metrics",
+  "version": 1
+}

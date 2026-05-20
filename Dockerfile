@@ -51,6 +51,7 @@ COPY --chown=nodejs:nodejs prisma/ ./prisma/
 
 # Copy application source code
 COPY --chown=nodejs:nodejs src/ ./src/
+COPY --chown=nodejs:nodejs prisma/ ./prisma/
 COPY --chown=nodejs:nodejs package*.json ./
 
 # Copy built frontend so backend can serve SPA on the same domain
