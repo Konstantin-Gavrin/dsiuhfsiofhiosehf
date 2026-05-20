@@ -69,9 +69,15 @@ export async function deleteDevice(token, id) {
 }
 
 export async function getCurrentPrice() {
-  const res = await fetch(`${API_URL}/price/current`);
+  const res = await fetch(`${API_URL}/boiler/status`);
   if (!res.ok) throw await parseError(res, 'Failed to fetch price');
-  return res.json();
+  const data = await res.json();
+  return {
+    price_eur: data.current_price_eur,
+    threshold_eur: data.threshold,
+    status: data.status,
+    stale: data.stale,
+  };
 }
 
 export async function getForecast() {
