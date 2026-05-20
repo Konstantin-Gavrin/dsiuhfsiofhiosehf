@@ -5,7 +5,12 @@
     "main": "src/server.js",
     "scripts": {
       "start": "node src/server.js",
-      "dev": "nodemon src/server.js"
+      "dev": "nodemon src/server.js",
+      "seed": "node prisma/seed.js",
+      "lint": "eslint src --ext .js",
+      "test": "jest --runInBand",
+      "test:coverage": "jest --coverage --runInBand",
+      "audit": "npm audit --audit-level=high"
     },
   "keywords": ["electricity", "nord-pool", "iot", "grid-management"],
   "author": "",
@@ -25,6 +30,7 @@
       "nodemon": "^3.1.0"
     },
     "prisma": {
-    "schema": "prisma/schema.prisma"
+    "schema": "prisma/schema.prisma",
+    "seed": "node prisma/seed.js"
   }
 }
