@@ -15,6 +15,7 @@ async function flushLogs() {
   logBuffer = [];
 
   try {
+    const timestampNs = `${BigInt(Date.now()) * 1000000n}`;
     const streams = [
       {
         stream: {
@@ -22,7 +23,7 @@ async function flushLogs() {
           environment: process.env.NODE_ENV || 'development'
         },
         values: logsToSend.map(log => [
-          Date.now() * 1000000, // Loki использует nanoseconds
+          timestampNs,
           JSON.stringify(log)
         ])
       }
@@ -34,7 +35,8 @@ async function flushLogs() {
     });
   } catch (error) {
     // Если отправка не удалась, логируем в консоль
-    console.error('[LOKI ERROR]', error.message);
+    const details = error.response?.data ? ` ${JSON.stringify(error.response.data)}` : '';
+    console.error('[LOKI ERROR]', error.message + details);
     logBuffer = logsToSend; // Возвращаем логи в буфер для повторной попытки
   }
 }
