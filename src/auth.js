@@ -20,7 +20,9 @@ async function register({ email, password, role = 'user' }) {
 async function login({ email, password }) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error('Invalid credentials');
-  if (!user.isActive) throw new Error('User is deactivated');
+  if (Object.prototype.hasOwnProperty.call(user, 'isActive') && user.isActive === false) {
+    throw new Error('User is deactivated');
+  }
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) throw new Error('Invalid credentials');
   const token = jwt.sign(

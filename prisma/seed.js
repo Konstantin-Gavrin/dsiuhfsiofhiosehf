@@ -16,9 +16,8 @@ async function seed() {
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      // Ensure existing user is active and has master role
+      // Ensure existing user has master role and (optionally) a new password
       const updates = {};
-      if (!existing.isActive) updates.isActive = true;
       if (existing.role !== 'master') updates.role = 'master';
 
       // If MASTER_PASSWORD provided, reset password to this value
@@ -34,7 +33,7 @@ async function seed() {
         try {
           // Try normal Prisma update first
           await prisma.user.update({ where: { email }, data: updates });
-          console.log('Updated existing user to master/activated/updated password as needed:', email);
+          console.log('Updated existing user to master/updated password as needed:', email);
         } catch (err) {
           // If Prisma schema on runtime differs, fallback to raw SQL to update columns directly
           console.warn('Prisma update failed, falling back to raw SQL update:', err.message);
@@ -43,29 +42,19 @@ async function seed() {
               await prisma.$executeRaw`UPDATE "User" SET password = ${newHash} WHERE email = ${email}`;
             }
             await prisma.$executeRaw`UPDATE "User" SET role = ${'master'} WHERE email = ${email}`;
-            // Try both possible column namings for isActive
-            try {
-              await prisma.$executeRaw`UPDATE "User" SET "isActive" = true WHERE email = ${email}`;
-            } catch (e1) {
-              try {
-                await prisma.$executeRaw`UPDATE "User" SET is_active = true WHERE email = ${email}`;
-              } catch (e2) {
-                console.warn('Could not set isActive via raw SQL, ignoring');
-              }
-            }
             console.log('Raw SQL update applied for user:', email);
           } catch (rawErr) {
             console.error('Raw SQL update failed:', rawErr.message);
           }
         }
       } else {
-        console.log('Master user already exists and is active:', email);
+        console.log('Master user already exists:', email);
       }
       return;
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({ data: { email, password: hash, role: 'master', isActive: true } });
+    const user = await prisma.user.create({ data: { email, password: hash, role: 'master' } });
     console.log('Created master user:', user.email);
   } catch (err) {
     console.error('Seed error:', err);
