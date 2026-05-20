@@ -69,6 +69,9 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://127.0.0.1:3000/health || exit 1
 
-# Start application
-# Apply schema directly so first deployment works even if migrations folder is empty.
-CMD npx prisma db push && node src/server.js
+# Copy entrypoint script and make executable
+COPY --chown=nodejs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
+# Start application via entrypoint which runs migrations, seed and then server
+ENTRYPOINT ["./docker-entrypoint.sh"]
