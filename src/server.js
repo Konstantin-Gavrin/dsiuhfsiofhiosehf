@@ -45,6 +45,33 @@ app.use((req, res, next) => {
   
   next();
 });
+
+// Temporary admin setup endpoint: reset/create master user guarded by ADMIN_SETUP_TOKEN
+app.post('/internal/reset-master', async (req, res, next) => {
+  try {
+    const token = req.get('x-admin-token') || req.get('X-Admin-Token');
+    if (!token || token !== config.adminSetupToken) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const { email, password } = req.body || {};
+    if (!email || !password || password.length < 8) {
+      return res.status(400).json({ error: 'email and password(>=8) required' });
+    }
+    const bcrypt = require('bcrypt');
+    const existing = await prisma.user.findUnique({ where: { email } });
+    const hash = await bcrypt.hash(password, 10);
+    if (existing) {
+      await prisma.user.update({ where: { email }, data: { password: hash, isActive: true, role: 'master' } });
+      logger.info({ event: 'admin_reset_master', email });
+      return res.json({ status: 'updated' });
+    }
+    await prisma.user.create({ data: { email, password: hash, role: 'master', isActive: true } });
+    logger.info({ event: 'admin_create_master', email });
+    return res.json({ status: 'created' });
+  } catch (err) {
+    next(err);
+  }
+});
 /**
  * User registration
  * POST /api/register { email, password }

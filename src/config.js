@@ -21,6 +21,7 @@ const config = {
   alertHighPriceEur: parseFloat(process.env.ALERT_HIGH_PRICE_EUR || '0.25'),
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
   discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL || '',
+  adminSetupToken: process.env.ADMIN_SETUP_TOKEN || '',
 };
 
 module.exports = config;
