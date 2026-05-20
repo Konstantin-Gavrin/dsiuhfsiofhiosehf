@@ -116,11 +116,6 @@ export async function setVacationMode(token, vacationMode) {
   return res.json();
 }
 
-export async function getCurrentPrice() {
-  const res = await fetch(`${API_URL}/price/current`);
-  if (!res.ok) throw await parseError(res, 'Failed to fetch price');
-  return res.json();
-}
 
 export async function getCommandHistory(token, deviceId) {
   const res = await fetch(`${API_URL}/commands/${deviceId}`, {
