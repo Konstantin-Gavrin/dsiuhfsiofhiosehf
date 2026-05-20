@@ -23,15 +23,41 @@ async function seed() {
 
       // If MASTER_PASSWORD provided, reset password to this value
       const newPassword = process.env.MASTER_PASSWORD;
+      let newHash = null;
       if (newPassword && newPassword.length > 0) {
-        const newHash = await bcrypt.hash(newPassword, 10);
+        newHash = await bcrypt.hash(newPassword, 10);
         updates.password = newHash;
         console.log('MASTER_PASSWORD provided: will update password for', email);
       }
 
       if (Object.keys(updates).length > 0) {
-        await prisma.user.update({ where: { email }, data: updates });
-        console.log('Updated existing user to master/activated/updated password as needed:', email);
+        try {
+          // Try normal Prisma update first
+          await prisma.user.update({ where: { email }, data: updates });
+          console.log('Updated existing user to master/activated/updated password as needed:', email);
+        } catch (err) {
+          // If Prisma schema on runtime differs, fallback to raw SQL to update columns directly
+          console.warn('Prisma update failed, falling back to raw SQL update:', err.message);
+          try {
+            if (newHash) {
+              await prisma.$executeRaw`UPDATE "User" SET password = ${newHash} WHERE email = ${email}`;
+            }
+            await prisma.$executeRaw`UPDATE "User" SET role = ${'master'} WHERE email = ${email}`;
+            // Try both possible column namings for isActive
+            try {
+              await prisma.$executeRaw`UPDATE "User" SET "isActive" = true WHERE email = ${email}`;
+            } catch (e1) {
+              try {
+                await prisma.$executeRaw`UPDATE "User" SET is_active = true WHERE email = ${email}`;
+              } catch (e2) {
+                console.warn('Could not set isActive via raw SQL, ignoring');
+              }
+            }
+            console.log('Raw SQL update applied for user:', email);
+          } catch (rawErr) {
+            console.error('Raw SQL update failed:', rawErr.message);
+          }
+        }
       } else {
         console.log('Master user already exists and is active:', email);
       }
