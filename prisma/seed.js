@@ -20,9 +20,18 @@ async function seed() {
       const updates = {};
       if (!existing.isActive) updates.isActive = true;
       if (existing.role !== 'master') updates.role = 'master';
+
+      // If MASTER_PASSWORD provided, reset password to this value
+      const newPassword = process.env.MASTER_PASSWORD;
+      if (newPassword && newPassword.length > 0) {
+        const newHash = await bcrypt.hash(newPassword, 10);
+        updates.password = newHash;
+        console.log('MASTER_PASSWORD provided: will update password for', email);
+      }
+
       if (Object.keys(updates).length > 0) {
         await prisma.user.update({ where: { email }, data: updates });
-        console.log('Updated existing user to master and activated:', email);
+        console.log('Updated existing user to master/activated/updated password as needed:', email);
       } else {
         console.log('Master user already exists and is active:', email);
       }
