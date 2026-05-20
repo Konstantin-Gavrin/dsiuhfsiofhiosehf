@@ -16,12 +16,21 @@ async function seed() {
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      console.log('Master user already exists:', email);
+      // Ensure existing user is active and has master role
+      const updates = {};
+      if (!existing.isActive) updates.isActive = true;
+      if (existing.role !== 'master') updates.role = 'master';
+      if (Object.keys(updates).length > 0) {
+        await prisma.user.update({ where: { email }, data: updates });
+        console.log('Updated existing user to master and activated:', email);
+      } else {
+        console.log('Master user already exists and is active:', email);
+      }
       return;
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({ data: { email, password: hash, role: 'master' } });
+    const user = await prisma.user.create({ data: { email, password: hash, role: 'master', isActive: true } });
     console.log('Created master user:', user.email);
   } catch (err) {
     console.error('Seed error:', err);
