@@ -16,6 +16,7 @@ import {
   getUsers,
   deleteUser,
   updateUser,
+  getCurrentUser,
 } from '../api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import LogoutButton from '../components/LogoutButton';
@@ -136,6 +137,10 @@ export default function Dashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
+      const currentUser = await getCurrentUser(token);
+      if (currentUser) {
+        setUserRole(currentUser.role);
+      }
       await Promise.all([
         loadDevices(),
         loadCurrentPrice(),
@@ -299,10 +304,18 @@ export default function Dashboard() {
 
   const loadUsers = async () => {
     try {
+      if (userRole !== 'master') {
+        setError('Only administrators can access user management');
+        return;
+      }
       const data = await getUsers(token);
       setUsers(data.users || []);
     } catch (e) {
-      console.error('Failed to load users:', e);
+      if (e.message === 'Forbidden') {
+        setError('You do not have permission to manage users');
+      } else {
+        console.error('Failed to load users:', e);
+      }
     }
   };
 
@@ -384,7 +397,7 @@ export default function Dashboard() {
 
         {/* Tab Navigation */}
         <div className="flex gap-3 mb-8 overflow-x-auto pb-2">
-          {['overview', 'devices', 'forecast', 'savings', 'settings', 'users'].map(tab => (
+          {['overview', 'devices', 'forecast', 'savings', 'settings', ...(userRole === 'master' ? ['users'] : [])].map(tab => (
             <button
               key={tab}
               onClick={() => {

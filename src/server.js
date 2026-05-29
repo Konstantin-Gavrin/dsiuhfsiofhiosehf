@@ -768,6 +768,31 @@ app.get('/api/commands/:deviceId', authRequired, async (req, res) => {
  */
 
 /**
+ * Get current user info
+ * GET /api/users/me
+ */
+app.get('/api/users/me', authRequired, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
  * List all users
  * GET /api/users
  */

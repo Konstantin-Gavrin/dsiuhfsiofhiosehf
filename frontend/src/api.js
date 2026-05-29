@@ -193,3 +193,11 @@ export async function deleteUser(token, userId) {
   if (!res.ok) throw await parseError(res, 'Failed to delete user');
   return res.json();
 }
+
+export async function getCurrentUser(token) {
+  const res = await fetch(`${API_URL}/users/me`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
