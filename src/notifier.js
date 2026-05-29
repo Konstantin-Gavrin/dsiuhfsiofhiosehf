@@ -2,16 +2,17 @@ const axios = require('axios');
 const config = require('./config');
 const logger = require('./logger');
 
-async function sendDiscord(targetUrl, text) {
-  const url = targetUrl || config.discordWebhookUrl;
+async function sendDiscord(targetUrl, text, fallbackUrl) {
+  const url = targetUrl || fallbackUrl || config.discordWebhookUrl;
   if (!url) return false;
   await axios.post(url, { content: text }, { timeout: config.requestTimeoutMs });
   return true;
 }
 
-async function sendTelegram(chatId, text) {
-  if (!config.telegramBotToken || !chatId) return false;
-  const endpoint = `https://api.telegram.org/bot${config.telegramBotToken}/sendMessage`;
+async function sendTelegram(chatId, text, botToken) {
+  const token = botToken || config.telegramBotToken;
+  if (!token || !chatId) return false;
+  const endpoint = `https://api.telegram.org/bot${token}/sendMessage`;
   await axios.post(
     endpoint,
     { chat_id: chatId, text },
@@ -26,7 +27,7 @@ async function notifyUser(user, text) {
       return await sendDiscord(user.notificationTarget, text);
     }
     if (user.notificationChannel === 'telegram') {
-      return await sendTelegram(user.notificationTarget, text);
+      return await sendTelegram(user.notificationTarget, text, user.telegramBotToken);
     }
     return false;
   } catch (error) {

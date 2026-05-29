@@ -131,3 +131,30 @@ export async function getCommandHistory(token, deviceId) {
   return res.json();
 }
 // Add more API methods as needed
+
+export async function getNotificationSettings(token) {
+  const res = await fetch(`${API_URL}/notifications/settings`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to load notification settings');
+  return res.json();
+}
+
+export async function saveNotificationSettings(token, settings) {
+  const res = await fetch(`${API_URL}/notifications/settings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(settings)
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to save notification settings');
+  return res.json();
+}
+
+export async function testNotification(token) {
+  const res = await fetch(`${API_URL}/notifications/test`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to send test notification');
+  return res.json();
+}

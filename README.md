@@ -127,6 +127,7 @@ Required secret for deploy step:
 - `GET /api/forecast`
 - `GET /api/reports/savings?period=day|week|month`
 - `POST /api/vacation-mode`
+- `GET /api/notifications/settings`
 - `POST /api/notifications/settings`
 - `POST /api/notifications/test`
 - `GET /health`

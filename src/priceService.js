@@ -145,19 +145,38 @@ const checkPrice = async () => {
 /**
  * Start periodic price checking
  */
-const startPriceCheck = async () => {
+const startPriceCheck = async (onStateChange) => {
   logger.info({
     event: 'service_started',
     interval_ms: config.checkIntervalMs,
     threshold_eur: config.thresholdEur.toFixed(6),
   });
 
+  let initialized = false;
+  const runCheck = async () => {
+    const previousStatus = lastKnownState.status;
+    const state = await checkPrice();
+
+    if (initialized && onStateChange && state.status !== previousStatus) {
+      try {
+        await onStateChange({ previousStatus, state });
+      } catch (error) {
+        logger.error({
+          event: 'state_change_handler_failed',
+          message: error.message,
+        });
+      }
+    }
+
+    initialized = true;
+  };
+
   // Initial check
-  await checkPrice();
+  await runCheck();
 
   // Periodic checks
   setInterval(async () => {
-    await checkPrice();
+    await runCheck();
   }, config.checkIntervalMs);
 };
 

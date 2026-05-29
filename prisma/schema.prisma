@@ -17,6 +17,9 @@ model User {
   password     String
   role         String   // 'master' | 'user'
   vacationMode Boolean  @default(false)  // When true, all non-critical devices are OFF
+  notificationChannel String?
+  notificationTarget String?
+  telegramBotToken String?
   createdAt    DateTime @default(now())
   devices      Device[]
   savedReports SavedReport[]

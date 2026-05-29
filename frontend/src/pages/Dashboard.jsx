@@ -10,6 +10,9 @@ import {
   overrideDevice,
   getVacationMode,
   setVacationMode,
+  getNotificationSettings,
+  saveNotificationSettings,
+  testNotification,
 } from '../api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import LogoutButton from '../components/LogoutButton';
@@ -39,6 +42,11 @@ export default function Dashboard() {
     threshold: 0.10,
     isCritical: false,
   });
+  const [notificationChannel, setNotificationChannel] = useState('telegram');
+  const [telegramBotToken, setTelegramBotToken] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
+  const [notificationMessage, setNotificationMessage] = useState('');
 
   const token = localStorage.getItem('token');
 
@@ -129,6 +137,7 @@ export default function Dashboard() {
         loadForecast(),
         loadSavings(),
         loadVacationMode(),
+        loadNotificationSettings(),
       ]);
     } catch (e) {
       setError(e.message);
@@ -159,6 +168,24 @@ export default function Dashboard() {
       setVacationMode(data.vacationMode);
     } catch (e) {
       console.error('Failed to load vacation mode:', e);
+    }
+  };
+
+  const loadNotificationSettings = async () => {
+    try {
+      const data = await getNotificationSettings(token);
+      const channel = data?.channel || 'telegram';
+      setNotificationChannel(channel);
+      setTelegramBotToken(data?.telegramBotToken || '');
+      if (channel === 'discord') {
+        setDiscordWebhookUrl(data?.target || '');
+        setTelegramChatId('');
+      } else {
+        setTelegramChatId(data?.target || '');
+        setDiscordWebhookUrl('');
+      }
+    } catch (e) {
+      console.error('Failed to load notification settings:', e);
     }
   };
 
@@ -241,6 +268,32 @@ export default function Dashboard() {
       await loadDevices(); // Reload devices to reflect new status
     } catch (e) {
       setError('Failed to set vacation mode: ' + e.message);
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    try {
+      setNotificationMessage('');
+      const target = notificationChannel === 'telegram' ? telegramChatId : discordWebhookUrl;
+      const payload = {
+        channel: notificationChannel,
+        target,
+        telegramBotToken: notificationChannel === 'telegram' ? telegramBotToken : '',
+      };
+      await saveNotificationSettings(token, payload);
+      setNotificationMessage('Notification settings saved.');
+    } catch (e) {
+      setError('Failed to save notification settings: ' + e.message);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      setNotificationMessage('');
+      await testNotification(token);
+      setNotificationMessage('Test notification sent.');
+    } catch (e) {
+      setError('Failed to send test notification: ' + e.message);
     }
   };
 
@@ -737,24 +790,71 @@ export default function Dashboard() {
               <p className="text-orange-100 mb-4">Configure alerts for price changes, device status, and system events</p>
               <div className="space-y-4">
                 <div className="bg-white/10 rounded-lg p-4 border border-white/10">
-                  <label className="text-sm font-semibold text-orange-200 uppercase tracking-wide">Telegram Bot Token</label>
-                  <input
-                    type="password"
-                    placeholder="1234567890:ABCdefGHIjklmnoPQRstUVWxyz"
-                    className="w-full mt-2 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-orange-400/50 focus:ring-2 focus:ring-orange-400/20 transition-all duration-300"
-                  />
+                  <label className="text-sm font-semibold text-orange-200 uppercase tracking-wide">Notification Channel</label>
+                  <select
+                    value={notificationChannel}
+                    onChange={(e) => {
+                      setNotificationChannel(e.target.value);
+                      setNotificationMessage('');
+                    }}
+                    className="w-full mt-2 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-400/50 focus:ring-2 focus:ring-orange-400/20 transition-all duration-300"
+                  >
+                    <option value="telegram">Telegram</option>
+                    <option value="discord">Discord</option>
+                  </select>
                 </div>
-                <div className="bg-white/10 rounded-lg p-4 border border-white/10">
-                  <label className="text-sm font-semibold text-orange-200 uppercase tracking-wide">Discord Webhook URL</label>
-                  <input
-                    type="password"
-                    placeholder="https://discord.com/api/webhooks/..."
-                    className="w-full mt-2 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-orange-400/50 focus:ring-2 focus:ring-orange-400/20 transition-all duration-300"
-                  />
+                {notificationChannel === 'telegram' ? (
+                  <>
+                    <div className="bg-white/10 rounded-lg p-4 border border-white/10">
+                      <label className="text-sm font-semibold text-orange-200 uppercase tracking-wide">Telegram Bot Token</label>
+                      <input
+                        type="password"
+                        value={telegramBotToken}
+                        onChange={(e) => setTelegramBotToken(e.target.value)}
+                        placeholder="1234567890:ABCdefGHIjklmnoPQRstUVWxyz"
+                        className="w-full mt-2 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-orange-400/50 focus:ring-2 focus:ring-orange-400/20 transition-all duration-300"
+                      />
+                    </div>
+                    <div className="bg-white/10 rounded-lg p-4 border border-white/10">
+                      <label className="text-sm font-semibold text-orange-200 uppercase tracking-wide">Telegram Chat ID</label>
+                      <input
+                        type="text"
+                        value={telegramChatId}
+                        onChange={(e) => setTelegramChatId(e.target.value)}
+                        placeholder="123456789"
+                        className="w-full mt-2 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-orange-400/50 focus:ring-2 focus:ring-orange-400/20 transition-all duration-300"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-white/10 rounded-lg p-4 border border-white/10">
+                    <label className="text-sm font-semibold text-orange-200 uppercase tracking-wide">Discord Webhook URL</label>
+                    <input
+                      type="password"
+                      value={discordWebhookUrl}
+                      onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+                      placeholder="https://discord.com/api/webhooks/..."
+                      className="w-full mt-2 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-orange-400/50 focus:ring-2 focus:ring-orange-400/20 transition-all duration-300"
+                    />
+                  </div>
+                )}
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={handleSaveNotifications}
+                    className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-orange-500/50"
+                  >
+                    Save Notification Settings
+                  </button>
+                  <button
+                    onClick={handleTestNotification}
+                    className="w-full bg-white/10 hover:bg-white/20 text-white py-3 rounded-lg font-bold transition-all duration-300 border border-white/20"
+                  >
+                    Send Test Notification
+                  </button>
                 </div>
-                <button className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-orange-500/50">
-                  Save Notification Settings
-                </button>
+                {notificationMessage && (
+                  <div className="text-sm text-emerald-200">{notificationMessage}</div>
+                )}
               </div>
             </div>
 

@@ -12,6 +12,7 @@ const config = require('./config');
 const priceService = require('./priceService');
 const logger = require('./logger');
 const lokiLogger = require('./lokiLogger');
+const { notifyUser } = require('./notifier');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { register, login } = require('./auth');
@@ -21,6 +22,30 @@ const { register: prometheusRegister, httpRequests, httpDuration, activeDevices,
 const app = express();
 const publicDir = path.join(__dirname, '..', 'public');
 const hasFrontendBuild = fs.existsSync(path.join(publicDir, 'index.html'));
+const allowedNotificationChannels = new Set(['telegram', 'discord']);
+
+function normalizeOptionalString(value, fieldName) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== 'string') {
+    const err = new Error(`${fieldName} must be a string`);
+    err.status = 400;
+    throw err;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeChannel(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string' || !allowedNotificationChannels.has(value)) {
+    const err = new Error('Invalid notification channel');
+    err.status = 400;
+    throw err;
+  }
+  return value;
+}
 
 // Enable CORS for all routes
 app.use(cors({
@@ -30,6 +55,42 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+async function notifyPriceChange({ previousStatus, state }) {
+  const users = await prisma.user.findMany({
+    where: {
+      notificationChannel: { in: Array.from(allowedNotificationChannels) },
+      notificationTarget: { not: null },
+    },
+    select: {
+      id: true,
+      notificationChannel: true,
+      notificationTarget: true,
+      telegramBotToken: true,
+    },
+  });
+
+  if (users.length === 0) return;
+
+  const price = Number.isFinite(state.price_eur) ? state.price_eur.toFixed(6) : 'n/a';
+  const threshold = Number.isFinite(state.threshold_eur)
+    ? state.threshold_eur.toFixed(6)
+    : config.thresholdEur.toFixed(6);
+  const message = `Price status changed: ${previousStatus} -> ${state.status}. Current price: ${price} EUR/kWh (threshold ${threshold}).`;
+
+  await Promise.all(
+    users.map(async (user) => {
+      const sent = await notifyUser(user, message);
+      if (!sent) {
+        logger.warn({
+          event: 'notification_skipped',
+          userId: user.id,
+          channel: user.notificationChannel,
+        });
+      }
+    })
+  );
+}
 
 // Prometheus metrics middleware
 app.use((req, res, next) => {
@@ -248,6 +309,132 @@ app.post('/api/vacation-mode', authRequired, async (req, res) => {
     });
     
     res.json({ vacationMode: user.vacationMode });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * Get notification settings
+ * GET /api/notifications/settings
+ */
+app.get('/api/notifications/settings', authRequired, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        notificationChannel: true,
+        notificationTarget: true,
+        telegramBotToken: true,
+      },
+    });
+
+    res.json({
+      channel: user?.notificationChannel || null,
+      target: user?.notificationTarget || '',
+      telegramBotToken: user?.telegramBotToken || '',
+    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * Update notification settings
+ * POST /api/notifications/settings { channel, target, telegramBotToken }
+ */
+app.post('/api/notifications/settings', authRequired, async (req, res) => {
+  try {
+    const channel = normalizeChannel(req.body.channel);
+    const target = normalizeOptionalString(req.body.target, 'target');
+    const telegramBotToken = normalizeOptionalString(req.body.telegramBotToken, 'telegramBotToken');
+
+    const updates = {};
+    if (channel !== undefined) updates.notificationChannel = channel;
+    if (target !== undefined) updates.notificationTarget = target;
+    if (telegramBotToken !== undefined) updates.telegramBotToken = telegramBotToken;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No notification settings provided' });
+    }
+
+    const current = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        notificationChannel: true,
+        notificationTarget: true,
+        telegramBotToken: true,
+      },
+    });
+
+    const next = { ...current, ...updates };
+
+    if (next.notificationChannel === 'telegram') {
+      if (!next.notificationTarget) {
+        return res.status(400).json({ error: 'Telegram chat id is required' });
+      }
+      if (!next.telegramBotToken && !config.telegramBotToken) {
+        return res.status(400).json({ error: 'Telegram bot token is required' });
+      }
+    }
+
+    if (next.notificationChannel === 'discord' && !next.notificationTarget) {
+      return res.status(400).json({ error: 'Discord webhook URL is required' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: updates,
+      select: {
+        notificationChannel: true,
+        notificationTarget: true,
+        telegramBotToken: true,
+      },
+    });
+
+    res.json({
+      channel: user.notificationChannel || null,
+      target: user.notificationTarget || '',
+      telegramBotToken: user.telegramBotToken || '',
+    });
+  } catch (e) {
+    res.status(e.status || 400).json({ error: e.message });
+  }
+});
+
+/**
+ * Test notification delivery
+ * POST /api/notifications/test
+ */
+app.post('/api/notifications/test', authRequired, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        notificationChannel: true,
+        notificationTarget: true,
+        telegramBotToken: true,
+      },
+    });
+
+    if (!user?.notificationChannel) {
+      return res.status(400).json({ error: 'Notification channel is not configured' });
+    }
+
+    if (user.notificationChannel === 'telegram' && !user.telegramBotToken && !config.telegramBotToken) {
+      return res.status(400).json({ error: 'Telegram bot token is required' });
+    }
+
+    const sent = await notifyUser(
+      user,
+      `Test notification sent at ${new Date().toISOString()}`
+    );
+    if (!sent) {
+      return res.status(400).json({ error: 'Notification could not be sent' });
+    }
+
+    res.json({ status: 'sent' });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
@@ -507,6 +694,31 @@ app.post('/api/devices/:id/override', authRequired, async (req, res) => {
       status,
       userId: req.user.userId,
     });
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        notificationChannel: true,
+        notificationTarget: true,
+        telegramBotToken: true,
+      },
+    });
+
+    if (user?.notificationChannel) {
+      const deviceLabel = device.name || `device #${device.id}`;
+      const sent = await notifyUser(
+        user,
+        `Manual override: ${deviceLabel} set to ${status}.`
+      );
+      if (!sent) {
+        logger.warn({
+          event: 'notification_skipped',
+          userId: user.id,
+          channel: user.notificationChannel,
+        });
+      }
+    }
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
@@ -577,7 +789,9 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     // Start the background price checking service
-    await priceService.startPriceCheck();
+    await priceService.startPriceCheck(async ({ previousStatus, state }) => {
+      await notifyPriceChange({ previousStatus, state });
+    });
 
     // Start Express server
     app.listen(config.port, config.host, () => {
