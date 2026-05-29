@@ -113,15 +113,26 @@ export async function getVacationMode(token) {
 }
 
 export async function setVacationMode(token, vacationMode) {
-  const res = await fetch(`${API_URL}/vacation-mode`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ vacationMode })
-  });
-  if (!res.ok) throw await parseError(res, 'Failed to set vacation mode');
-  const data = await res.json();
-  console.log('setVacationMode response data:', data);
-  return data;
+  console.log('setVacationMode called with:', { vacationMode, token: token ? 'exists' : 'missing' });
+  try {
+    const res = await fetch(`${API_URL}/vacation-mode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ vacationMode })
+    });
+    console.log('setVacationMode fetch response status:', res.status, res.statusText);
+    if (!res.ok) {
+      const err = await parseError(res, 'Failed to set vacation mode');
+      console.error('setVacationMode error response:', err);
+      throw err;
+    }
+    const data = await res.json();
+    console.log('setVacationMode response data:', data);
+    return data;
+  } catch (e) {
+    console.error('setVacationMode exception:', e);
+    throw e;
+  }
 }
 
 
