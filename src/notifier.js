@@ -2,8 +2,8 @@ const axios = require('axios');
 const config = require('./config');
 const logger = require('./logger');
 
-async function sendDiscord(targetUrl, text, fallbackUrl) {
-  const url = targetUrl || fallbackUrl || config.discordWebhookUrl;
+async function sendDiscord(webhookUrl, text, fallbackUrl) {
+  const url = webhookUrl || fallbackUrl || config.discordWebhookUrl;
   if (!url) return false;
   await axios.post(url, { content: text }, { timeout: config.requestTimeoutMs });
   return true;
@@ -24,10 +24,10 @@ async function sendTelegram(chatId, text, botToken) {
 async function notifyUser(user, text) {
   try {
     if (user.notificationChannel === 'discord') {
-      return await sendDiscord(user.notificationTarget, text);
+      return await sendDiscord(user.discordWebhookUrl, text);
     }
     if (user.notificationChannel === 'telegram') {
-      return await sendTelegram(user.notificationTarget, text, user.telegramBotToken);
+      return await sendTelegram(user.telegramChatId, text, user.telegramBotToken);
     }
     return false;
   } catch (error) {

@@ -51,7 +51,11 @@ export const usersApi = {
 };
 
 export const notificationApi = {
-  saveSettings: (channel, target) =>
-    api('/notifications/settings', { method: 'POST', body: JSON.stringify({ channel, target }) }),
+  getSettings: () => api('/notifications/settings'),
+  saveSettings: (channel, discordWebhookUrl, telegramChatId, telegramBotToken) =>
+    api('/notifications/settings', {
+      method: 'POST',
+      body: JSON.stringify({ channel, discordWebhookUrl, telegramChatId, telegramBotToken }),
+    }),
   test: () => api('/notifications/test', { method: 'POST' }),
 };

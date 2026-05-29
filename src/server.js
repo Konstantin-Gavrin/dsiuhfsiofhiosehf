@@ -324,14 +324,16 @@ app.get('/api/notifications/settings', authRequired, async (req, res) => {
       where: { id: req.user.userId },
       select: {
         notificationChannel: true,
-        notificationTarget: true,
+        discordWebhookUrl: true,
+        telegramChatId: true,
         telegramBotToken: true,
       },
     });
 
     res.json({
       channel: user?.notificationChannel || null,
-      target: user?.notificationTarget || '',
+      discordWebhookUrl: user?.discordWebhookUrl || '',
+      telegramChatId: user?.telegramChatId || '',
       telegramBotToken: user?.telegramBotToken || '',
     });
   } catch (e) {
@@ -341,17 +343,19 @@ app.get('/api/notifications/settings', authRequired, async (req, res) => {
 
 /**
  * Update notification settings
- * POST /api/notifications/settings { channel, target, telegramBotToken }
+ * POST /api/notifications/settings { channel, discordWebhookUrl, telegramChatId, telegramBotToken }
  */
 app.post('/api/notifications/settings', authRequired, async (req, res) => {
   try {
     const channel = normalizeChannel(req.body.channel);
-    const target = normalizeOptionalString(req.body.target, 'target');
+    const discordWebhookUrl = normalizeOptionalString(req.body.discordWebhookUrl, 'discordWebhookUrl');
+    const telegramChatId = normalizeOptionalString(req.body.telegramChatId, 'telegramChatId');
     const telegramBotToken = normalizeOptionalString(req.body.telegramBotToken, 'telegramBotToken');
 
     const updates = {};
     if (channel !== undefined) updates.notificationChannel = channel;
-    if (target !== undefined) updates.notificationTarget = target;
+    if (discordWebhookUrl !== undefined) updates.discordWebhookUrl = discordWebhookUrl;
+    if (telegramChatId !== undefined) updates.telegramChatId = telegramChatId;
     if (telegramBotToken !== undefined) updates.telegramBotToken = telegramBotToken;
 
     if (Object.keys(updates).length === 0) {
@@ -362,7 +366,8 @@ app.post('/api/notifications/settings', authRequired, async (req, res) => {
       where: { id: req.user.userId },
       select: {
         notificationChannel: true,
-        notificationTarget: true,
+        discordWebhookUrl: true,
+        telegramChatId: true,
         telegramBotToken: true,
       },
     });
@@ -370,15 +375,15 @@ app.post('/api/notifications/settings', authRequired, async (req, res) => {
     const next = { ...current, ...updates };
 
     if (next.notificationChannel === 'telegram') {
-      if (!next.notificationTarget) {
-        return res.status(400).json({ error: 'Telegram chat id is required' });
+      if (!next.telegramChatId) {
+        return res.status(400).json({ error: 'Telegram chat ID is required' });
       }
       if (!next.telegramBotToken && !config.telegramBotToken) {
         return res.status(400).json({ error: 'Telegram bot token is required' });
       }
     }
 
-    if (next.notificationChannel === 'discord' && !next.notificationTarget) {
+    if (next.notificationChannel === 'discord' && !next.discordWebhookUrl) {
       return res.status(400).json({ error: 'Discord webhook URL is required' });
     }
 
@@ -387,14 +392,16 @@ app.post('/api/notifications/settings', authRequired, async (req, res) => {
       data: updates,
       select: {
         notificationChannel: true,
-        notificationTarget: true,
+        discordWebhookUrl: true,
+        telegramChatId: true,
         telegramBotToken: true,
       },
     });
 
     res.json({
       channel: user.notificationChannel || null,
-      target: user.notificationTarget || '',
+      discordWebhookUrl: user.discordWebhookUrl || '',
+      telegramChatId: user.telegramChatId || '',
       telegramBotToken: user.telegramBotToken || '',
     });
   } catch (e) {
@@ -413,13 +420,18 @@ app.post('/api/notifications/test', authRequired, async (req, res) => {
       select: {
         id: true,
         notificationChannel: true,
-        notificationTarget: true,
+        discordWebhookUrl: true,
+        telegramChatId: true,
         telegramBotToken: true,
       },
     });
 
     if (!user?.notificationChannel) {
       return res.status(400).json({ error: 'Notification channel is not configured' });
+    }
+
+    if (user.notificationChannel === 'telegram' && !user.telegramChatId) {
+      return res.status(400).json({ error: 'Telegram chat ID is not configured' });
     }
 
     if (user.notificationChannel === 'telegram' && !user.telegramBotToken && !config.telegramBotToken) {

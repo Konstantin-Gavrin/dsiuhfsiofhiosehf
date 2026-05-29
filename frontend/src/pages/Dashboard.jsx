@@ -177,13 +177,8 @@ export default function Dashboard() {
       const channel = data?.channel || 'telegram';
       setNotificationChannel(channel);
       setTelegramBotToken(data?.telegramBotToken || '');
-      if (channel === 'discord') {
-        setDiscordWebhookUrl(data?.target || '');
-        setTelegramChatId('');
-      } else {
-        setTelegramChatId(data?.target || '');
-        setDiscordWebhookUrl('');
-      }
+      setTelegramChatId(data?.telegramChatId || '');
+      setDiscordWebhookUrl(data?.discordWebhookUrl || '');
     } catch (e) {
       console.error('Failed to load notification settings:', e);
     }
@@ -274,10 +269,10 @@ export default function Dashboard() {
   const handleSaveNotifications = async () => {
     try {
       setNotificationMessage('');
-      const target = notificationChannel === 'telegram' ? telegramChatId : discordWebhookUrl;
       const payload = {
         channel: notificationChannel,
-        target,
+        discordWebhookUrl: notificationChannel === 'discord' ? discordWebhookUrl : '',
+        telegramChatId: notificationChannel === 'telegram' ? telegramChatId : '',
         telegramBotToken: notificationChannel === 'telegram' ? telegramBotToken : '',
       };
       await saveNotificationSettings(token, payload);
