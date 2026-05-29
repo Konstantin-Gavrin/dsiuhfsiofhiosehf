@@ -268,10 +268,13 @@ export default function Dashboard() {
   const handleVacationMode = async () => {
     const newVacationMode = !vacationMode;
     try {
-      await setVacationMode(token, newVacationMode);
+      console.log('Vacation mode button clicked. Toggling to:', newVacationMode);
+      const response = await setVacationMode(token, newVacationMode);
+      console.log('Vacation mode response:', response);
       setVacationMode(newVacationMode);
       await loadDevices(); // Reload devices to reflect new status
     } catch (e) {
+      console.error('Error setting vacation mode:', e);
       setError('Failed to set vacation mode: ' + e.message);
     }
   };

@@ -323,6 +323,11 @@ app.post('/api/vacation-mode', authRequired, async (req, res) => {
         }
       });
       updates.vacationModeDeviceStates = deviceStates;
+      logger.info({
+        event: 'vacation_mode_enabled',
+        userId: req.user.userId,
+        savedDevices: Object.keys(deviceStates).length,
+      });
     }
     // If turning OFF vacation mode, restore saved device states
     else if (!vacationMode && user.vacationMode && user.vacationModeDeviceStates) {
@@ -335,8 +340,23 @@ app.post('/api/vacation-mode', authRequired, async (req, res) => {
             data: { status },
           });
         }
+        logger.info({
+          event: 'vacation_mode_disabled',
+          userId: req.user.userId,
+          restoredDevices: Object.keys(savedStates).length,
+        });
       }
       updates.vacationModeDeviceStates = null;
+    } else if (vacationMode && user.vacationMode) {
+      logger.info({
+        event: 'vacation_mode_already_enabled',
+        userId: req.user.userId,
+      });
+    } else if (!vacationMode && !user.vacationMode) {
+      logger.info({
+        event: 'vacation_mode_already_disabled',
+        userId: req.user.userId,
+      });
     }
     
     const updatedUser = await prisma.user.update({
@@ -346,6 +366,11 @@ app.post('/api/vacation-mode', authRequired, async (req, res) => {
     
     res.json({ vacationMode: updatedUser.vacationMode });
   } catch (e) {
+    logger.error({
+      event: 'vacation_mode_error',
+      userId: req.user.userId,
+      error: e.message,
+    });
     res.status(400).json({ error: e.message });
   }
 });
