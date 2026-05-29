@@ -119,7 +119,9 @@ export async function setVacationMode(token, vacationMode) {
     body: JSON.stringify({ vacationMode })
   });
   if (!res.ok) throw await parseError(res, 'Failed to set vacation mode');
-  return res.json();
+  const data = await res.json();
+  console.log('setVacationMode response data:', data);
+  return data;
 }
 
 

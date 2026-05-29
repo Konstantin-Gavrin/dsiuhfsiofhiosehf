@@ -269,9 +269,13 @@ export default function Dashboard() {
     const newVacationMode = !vacationMode;
     try {
       console.log('Vacation mode button clicked. Toggling to:', newVacationMode);
+      console.log('Token:', token ? 'exists' : 'missing');
       const response = await setVacationMode(token, newVacationMode);
       console.log('Vacation mode response:', response);
-      setVacationMode(newVacationMode);
+      console.log('Response type:', typeof response);
+      if (response) {
+        setVacationMode(response.vacationMode !== undefined ? response.vacationMode : newVacationMode);
+      }
       await loadDevices(); // Reload devices to reflect new status
     } catch (e) {
       console.error('Error setting vacation mode:', e);
