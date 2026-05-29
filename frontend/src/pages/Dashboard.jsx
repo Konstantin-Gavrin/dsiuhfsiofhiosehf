@@ -29,7 +29,7 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  const [vacationMode, setVacationMode] = useState(false);
+  const [vacationMode, setVacationModeUI] = useState(false);
   const [fixedPrice, setFixedPrice] = useState('0.15');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [chartData, setChartData] = useState([]);
@@ -175,7 +175,7 @@ export default function Dashboard() {
   const loadVacationMode = async () => {
     try {
       const data = await getVacationMode(token);
-      setVacationMode(data.vacationMode);
+      setVacationModeUI(data.vacationMode);
     } catch (e) {
       console.error('Failed to load vacation mode:', e);
     }
@@ -268,15 +268,11 @@ export default function Dashboard() {
   const handleVacationMode = async () => {
     const newVacationMode = !vacationMode;
     try {
-      console.log('Vacation mode button clicked. Toggling to:', newVacationMode);
-      console.log('Token:', token ? 'exists' : 'missing');
       const response = await setVacationMode(token, newVacationMode);
-      console.log('Vacation mode response:', response);
-      console.log('Response type:', typeof response);
       if (response) {
-        setVacationMode(response.vacationMode !== undefined ? response.vacationMode : newVacationMode);
+        setVacationModeUI(response.vacationMode !== undefined ? response.vacationMode : newVacationMode);
       }
-      await loadDevices(); // Reload devices to reflect new status
+      await loadDevices();
     } catch (e) {
       console.error('Error setting vacation mode:', e);
       setError('Failed to set vacation mode: ' + e.message);
