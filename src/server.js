@@ -302,13 +302,49 @@ app.post('/api/vacation-mode', authRequired, async (req, res) => {
     if (typeof vacationMode !== 'boolean') {
       return res.status(400).json({ error: 'vacationMode must be a boolean' });
     }
-    
-    const user = await prisma.user.update({
+
+    const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
-      data: { vacationMode }
+      include: { devices: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updates = { vacationMode };
+
+    // If turning ON vacation mode, save current non-critical device states
+    if (vacationMode && !user.vacationMode) {
+      const deviceStates = {};
+      user.devices.forEach(device => {
+        if (!device.isCritical) {
+          deviceStates[device.id] = device.status;
+        }
+      });
+      updates.vacationModeDeviceStates = deviceStates;
+    }
+    // If turning OFF vacation mode, restore saved device states
+    else if (!vacationMode && user.vacationMode && user.vacationModeDeviceStates) {
+      const savedStates = user.vacationModeDeviceStates;
+      if (typeof savedStates === 'object' && Object.keys(savedStates).length > 0) {
+        // Update each device to its saved state
+        for (const [deviceId, status] of Object.entries(savedStates)) {
+          await prisma.device.update({
+            where: { id: parseInt(deviceId, 10) },
+            data: { status },
+          });
+        }
+      }
+      updates.vacationModeDeviceStates = null;
+    }
+    
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: updates
     });
     
-    res.json({ vacationMode: user.vacationMode });
+    res.json({ vacationMode: updatedUser.vacationMode });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }

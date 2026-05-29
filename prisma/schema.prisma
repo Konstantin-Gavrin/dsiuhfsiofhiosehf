@@ -12,18 +12,19 @@ datasource db {
 }
 
 model User {
-  id                Int      @id @default(autoincrement())
-  email             String   @unique
-  password          String
-  role              String   // 'master' | 'user'
-  vacationMode      Boolean  @default(false)  // When true, all non-critical devices are OFF
-  notificationChannel String?
-  discordWebhookUrl String?  // Discord webhook URL
-  telegramChatId    String?  // Telegram chat ID (user ID)
-  telegramBotToken  String?  // Telegram bot token (per-user)
-  createdAt         DateTime @default(now())
-  devices           Device[]
-  savedReports      SavedReport[]
+  id                      Int      @id @default(autoincrement())
+  email                   String   @unique
+  password                String
+  role                    String   // 'master' | 'user'
+  vacationMode            Boolean  @default(false)  // When true, all non-critical devices are OFF
+  vacationModeDeviceStates Json?    // JSON backup of device states before vacation mode
+  notificationChannel     String?
+  discordWebhookUrl       String?  // Discord webhook URL
+  telegramChatId          String?  // Telegram chat ID (user ID)
+  telegramBotToken        String?  // Telegram bot token (per-user)
+  createdAt               DateTime @default(now())
+  devices                 Device[]
+  savedReports            SavedReport[]
 }
 
 model Device {
