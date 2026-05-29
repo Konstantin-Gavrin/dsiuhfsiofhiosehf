@@ -158,3 +158,38 @@ export async function testNotification(token) {
   if (!res.ok) throw await parseError(res, 'Failed to send test notification');
   return res.json();
 }
+
+export async function getUsers(token) {
+  const res = await fetch(`${API_URL}/users`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to fetch users');
+  return res.json();
+}
+
+export async function getUser(token, userId) {
+  const res = await fetch(`${API_URL}/users/${userId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to fetch user');
+  return res.json();
+}
+
+export async function updateUser(token, userId, updates) {
+  const res = await fetch(`${API_URL}/users/${userId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(updates)
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to update user');
+  return res.json();
+}
+
+export async function deleteUser(token, userId) {
+  const res = await fetch(`${API_URL}/users/${userId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw await parseError(res, 'Failed to delete user');
+  return res.json();
+}

@@ -13,6 +13,9 @@ import {
   getNotificationSettings,
   saveNotificationSettings,
   testNotification,
+  getUsers,
+  deleteUser,
+  updateUser,
 } from '../api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import LogoutButton from '../components/LogoutButton';
@@ -47,6 +50,8 @@ export default function Dashboard() {
   const [telegramChatId, setTelegramChatId] = useState('');
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
   const [notificationMessage, setNotificationMessage] = useState('');
+  const [users, setUsers] = useState([]);
+  const [userRole, setUserRole] = useState(null);
 
   const token = localStorage.getItem('token');
 
@@ -292,6 +297,44 @@ export default function Dashboard() {
     }
   };
 
+  const loadUsers = async () => {
+    try {
+      const data = await getUsers(token);
+      setUsers(data.users || []);
+    } catch (e) {
+      console.error('Failed to load users:', e);
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Delete this user?')) return;
+    try {
+      await deleteUser(token, userId);
+      await loadUsers();
+      setError('');
+    } catch (e) {
+      setError('Failed to delete user: ' + e.message);
+    }
+  };
+
+  const handleUpdateUserRole = async (userId, newRole) => {
+    try {
+      await updateUser(token, userId, { role: newRole });
+      await loadUsers();
+    } catch (e) {
+      setError('Failed to update user role: ' + e.message);
+    }
+  };
+
+  const handleToggleVacationModeUser = async (userId, currentVacationMode) => {
+    try {
+      await updateUser(token, userId, { vacationMode: !currentVacationMode });
+      await loadUsers();
+    } catch (e) {
+      setError('Failed to update vacation mode: ' + e.message);
+    }
+  };
+
   const priceColor = currentPrice?.price_eur > (fixedPrice || 0.15) 
     ? 'from-red-500 to-red-600' 
     : 'from-green-500 to-emerald-600';
@@ -341,10 +384,13 @@ export default function Dashboard() {
 
         {/* Tab Navigation */}
         <div className="flex gap-3 mb-8 overflow-x-auto pb-2">
-          {['overview', 'devices', 'forecast', 'savings', 'settings'].map(tab => (
+          {['overview', 'devices', 'forecast', 'savings', 'settings', 'users'].map(tab => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                if (tab === 'users') loadUsers();
+              }}
               className={`px-6 py-3 rounded-lg font-semibold capitalize transition-all duration-300 whitespace-nowrap ${
                 activeTab === tab
                   ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg scale-105'
@@ -356,6 +402,7 @@ export default function Dashboard() {
               {tab === 'forecast' && '📈 '}
               {tab === 'savings' && '💰 '}
               {tab === 'settings' && '⚙️ '}
+              {tab === 'users' && '👥 '}
               {tab}
             </button>
           ))}
@@ -863,6 +910,94 @@ export default function Dashboard() {
                 <p>GET /api/savings</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Users Tab - Admin Only */}
+        {activeTab === 'users' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-bold text-white flex items-center gap-2">👥 User Management</h2>
+              <button
+                onClick={() => loadUsers()}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+              >
+                🔄 Refresh
+              </button>
+            </div>
+
+            {users.length === 0 ? (
+              <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-8 text-center text-slate-300">
+                <p>No users found or you don't have permission to manage users.</p>
+                <button
+                  onClick={() => loadUsers()}
+                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                >
+                  Load Users
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {users.map(user => (
+                  <div key={user.id} className="bg-slate-700/50 border border-slate-600 rounded-lg p-6 text-white">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <p className="text-lg font-semibold">{user.email}</p>
+                        <p className="text-slate-300 text-sm">ID: {user.id}</p>
+                        <p className="text-slate-400 text-xs mt-1">
+                          Created: {new Date(user.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {user.id !== parseInt(localStorage.getItem('userId') || '0') && (
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded text-sm transition-colors"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-slate-300 text-sm">Role</label>
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
+                          className="w-full mt-1 bg-slate-800 border border-slate-600 text-white rounded px-3 py-2 text-sm"
+                        >
+                          <option value="user">User</option>
+                          <option value="master">Master (Admin)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-slate-300 text-sm">Vacation Mode</label>
+                        <button
+                          onClick={() => handleToggleVacationModeUser(user.id, user.vacationMode)}
+                          className={`w-full mt-1 py-2 px-3 rounded font-semibold text-sm transition-colors ${
+                            user.vacationMode
+                              ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                              : 'bg-slate-600 hover:bg-slate-700 text-white'
+                          }`}
+                        >
+                          {user.vacationMode ? '✓ Active' : '○ Inactive'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {user.notificationChannel && (
+                      <div className="mt-4 pt-4 border-t border-slate-600">
+                        <p className="text-slate-300 text-sm">
+                          Notifications: <span className="text-white font-semibold capitalize">{user.notificationChannel}</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

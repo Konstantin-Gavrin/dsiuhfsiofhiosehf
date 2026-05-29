@@ -763,6 +763,153 @@ app.get('/api/commands/:deviceId', authRequired, async (req, res) => {
   }
 });
 
+/**
+ * User Management Endpoints (admin only)
+ */
+
+/**
+ * List all users
+ * GET /api/users
+ */
+app.get('/api/users', authRequired, requireRole('master'), async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        vacationMode: true,
+        notificationChannel: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ users });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * Get user details
+ * GET /api/users/:id
+ */
+app.get('/api/users/:id', authRequired, requireRole('master'), async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        vacationMode: true,
+        notificationChannel: true,
+        discordWebhookUrl: true,
+        telegramChatId: true,
+        telegramBotToken: true,
+        createdAt: true,
+        devices: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * Update user
+ * PATCH /api/users/:id
+ */
+app.patch('/api/users/:id', authRequired, requireRole('master'), async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+
+    const updates = {};
+    if (req.body.role !== undefined) {
+      if (!['master', 'user'].includes(req.body.role)) {
+        return res.status(400).json({ error: 'Invalid role' });
+      }
+      updates.role = req.body.role;
+    }
+    if (req.body.vacationMode !== undefined) {
+      updates.vacationMode = Boolean(req.body.vacationMode);
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No updates provided' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updates,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        vacationMode: true,
+        createdAt: true,
+      },
+    });
+
+    res.json(user);
+  } catch (e) {
+    if (e.code === 'P2025') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * Delete user
+ * DELETE /api/users/:id
+ */
+app.delete('/api/users/:id', authRequired, requireRole('master'), async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+
+    // Prevent deleting oneself
+    if (userId === req.user.userId) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    res.json({ success: true, message: 'User deleted' });
+  } catch (e) {
+    if (e.code === 'P2025') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(400).json({ error: e.message });
+  }
+});
+
 if (hasFrontendBuild) {
   app.use(express.static(publicDir));
   app.get(/^\/(?!api|health).*/, (req, res) => {
